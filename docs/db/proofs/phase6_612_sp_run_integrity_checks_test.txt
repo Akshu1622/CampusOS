@@ -1,0 +1,19 @@
++---------------------------------+
+| Test                            |
++---------------------------------+
+| Testing sp_run_integrity_checks |
++---------------------------------+
++--------------+------------------------------+--------+----------------+-------------+
+| module       | check_name                   | status | affected_count | sample_keys |
++--------------+------------------------------+--------+----------------+-------------+
+| M2 Academics | Orphan Enrollments           | PASS   |              0 | NULL        |
+| M1 Core      | Student ID Format            | PASS   |              0 | NULL        |
+| M5 HR        | Employee ID Format           | PASS   |              0 | NULL        |
+| M4 Finance   | Receipt Number Format        | PASS   |              0 | NULL        |
+| M2 Academics | Course Code Format           | PASS   |              0 | NULL        |
+| M6 Hostel    | Bed Count Match              | FAIL   |              1 | 1           |
+| M4 Finance   | Payment Allocations Match    | PASS   |              0 | NULL        |
+| M1 Core      | Current Term Count           | PASS   |              1 | 2           |
+| M5 HR        | Finalized Payrolls per Month | PASS   |              0 | NULL        |
+| M1 Core      | Users with Person Record     | PASS   |              0 | NULL        |
++--------------+------------------------------+--------+----------------+-------------+

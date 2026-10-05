@@ -1,0 +1,12 @@
++--------------------------------+
+| Test                           |
++--------------------------------+
+| Testing vw_attendance_shortage |
++--------------------------------+
++------------+-------------------+---------------+-------------+-------------+--------------+------------------------+-------------------------------------+--------------+----------------+
+| student_id | global_student_id | student_name  | term_label  | course_code | course_title | department_name        | program_name                        | faculty_name | attendance_pct |
++------------+-------------------+---------------+-------------+-------------+--------------+------------------------+-------------------------------------+--------------+----------------+
+|          3 | STU-2023-000003   | Student3 Demo | Spring 2024 | CS001       | Course 1     | Electrical Engineering | Bachelors in Electrical Engineering | Emp1 Demo    |          50.00 |
+|          4 | STU-2023-000004   | Student4 Demo | Spring 2024 | CS001       | Course 1     | Mechanical Engineering | Masters in Mechanical Engineering   | Emp1 Demo    |           0.00 |
+|          5 | STU-2023-000005   | Student5 Demo | Spring 2024 | CS001       | Course 1     | Mechanical Engineering | Masters in Mechanical Engineering   | Emp1 Demo    |           0.00 |
++------------+-------------------+---------------+-------------+-------------+--------------+------------------------+-------------------------------------+--------------+----------------+
