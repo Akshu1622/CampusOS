@@ -1,0 +1,14 @@
++--------------------------------------+
+| Test                                 |
++--------------------------------------+
+| Testing vw_faculty_leave_utilisation |
++--------------------------------------+
++-------------+------------+-----------+-------------------------+-----------------+--------------+------------+-------------------+
+| employee_id | first_name | last_name | department_name         | leave_type_name | annual_quota | used_leave | available_balance |
++-------------+------------+-----------+-------------------------+-----------------+--------------+------------+-------------------+
+|           1 | Emp1       | Demo      | Business Administration | Sick Leave      |           10 |      -10.0 |              20.0 |
+|           1 | Emp1       | Demo      | Business Administration | Earned Leave    |           30 |      -30.0 |              60.0 |
+|           1 | Emp1       | Demo      | Business Administration | Casual Leave    |           12 |        0.0 |              12.0 |
+|           2 | Emp2       | Demo      | Computer Science        | Sick Leave      |           10 |      -10.0 |              20.0 |
+|           2 | Emp2       | Demo      | Computer Science        | Earned Leave    |           30 |      -30.0 |              60.0 |
++-------------+------------+-----------+-------------------------+-----------------+--------------+------------+-------------------+

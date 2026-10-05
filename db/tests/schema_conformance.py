@@ -49,7 +49,7 @@ def main():
     differences = 0
     
     # 1. Check Tables
-    db_tables_raw = run_query(f"SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{db_name}';", db_name, root_pass)
+    db_tables_raw = run_query(f"SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{db_name}' AND TABLE_TYPE = 'BASE TABLE';", db_name, root_pass)
     db_tables = {row[0] for row in db_tables_raw}
     
     # Remove metadata tables from check

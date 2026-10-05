@@ -53,7 +53,7 @@ def main():
                 all_passed = False
                 
         elif file.endswith('.sql'):
-            if args.proofs and file.startswith('5'):
+            if args.proofs and (file.startswith('5') or file.startswith('6')):
                 # Proof output format
                 proofs_dir = os.path.join(project_root, 'docs', 'db', 'proofs')
                 os.makedirs(proofs_dir, exist_ok=True)
@@ -64,7 +64,8 @@ def main():
                     
                 if res.returncode == 0:
                     print(f"[PASS] {file}")
-                    proof_file = os.path.join(proofs_dir, f"phase5_{file.replace('5x_', '').replace('.sql', '.txt')}")
+                    phase_prefix = "phase6" if file.startswith('6') else "phase5"
+                    proof_file = os.path.join(proofs_dir, f"{phase_prefix}_{file.replace('.sql', '.txt')}")
                     with open(proof_file, 'w') as out_f:
                         out_f.write(res.stdout)
                 else:

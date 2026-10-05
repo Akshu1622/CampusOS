@@ -1,0 +1,14 @@
++--------------------------------------+
+| Test                                 |
++--------------------------------------+
+| Testing vw_course_attendance_summary |
++--------------------------------------+
++-------------+-------------+--------------+-------------+--------------+-------------------+----------------+--------------------+
+| offering_id | course_code | course_title | term_label  | faculty_name | total_enrollments | total_sessions | avg_attendance_pct |
++-------------+-------------+--------------+-------------+--------------+-------------------+----------------+--------------------+
+|          50 | CS050       | Course 50    | Spring 2024 | Emp6 Demo    |              NULL |           NULL |               NULL |
+|          49 | CS049       | Course 49    | Spring 2024 | Emp8 Demo    |              NULL |           NULL |               NULL |
+|          48 | CS048       | Course 48    | Spring 2024 | Emp5 Demo    |              NULL |           NULL |               NULL |
+|          47 | CS047       | Course 47    | Spring 2024 | Emp20 Demo   |              NULL |           NULL |               NULL |
+|          46 | CS046       | Course 46    | Spring 2024 | Emp14 Demo   |              NULL |           NULL |               NULL |
++-------------+-------------+--------------+-------------+--------------+-------------------+----------------+--------------------+
