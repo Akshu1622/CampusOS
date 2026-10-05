@@ -2,6 +2,7 @@
 import os
 import sys
 import subprocess
+import argparse
 
 def load_env(env_path):
     env = {}
@@ -16,6 +17,10 @@ def load_env(env_path):
     return env
 
 def main():
+    parser = argparse.ArgumentParser(description="Test Runner")
+    parser.add_argument("--proofs", action="store_true", help="Generate proofs for tests")
+    args = parser.parse_args()
+
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     env_path = os.path.join(project_root, '.env')
     env_vars = load_env(env_path)
@@ -48,15 +53,34 @@ def main():
                 all_passed = False
                 
         elif file.endswith('.sql'):
-            cmd = ["docker", "compose", "exec", "-T", "db", "mysql", "-u", "root", f"-p{root_pass}", db_name]
-            with open(file_path, 'r') as f:
-                res = subprocess.run(cmd, stdin=f, capture_output=True, text=True, env=sys_env)
-            if res.returncode == 0:
-                print(f"[PASS] {file}")
+            if args.proofs and file.startswith('5'):
+                # Proof output format
+                proofs_dir = os.path.join(project_root, 'docs', 'db', 'proofs')
+                os.makedirs(proofs_dir, exist_ok=True)
+                
+                cmd = ["docker", "compose", "exec", "-T", "db", "mysql", "--table", "-u", "root", f"-p{root_pass}", db_name]
+                with open(file_path, 'r') as f:
+                    res = subprocess.run(cmd, stdin=f, capture_output=True, text=True, env=sys_env)
+                    
+                if res.returncode == 0:
+                    print(f"[PASS] {file}")
+                    proof_file = os.path.join(proofs_dir, f"phase5_{file.replace('5x_', '').replace('.sql', '.txt')}")
+                    with open(proof_file, 'w') as out_f:
+                        out_f.write(res.stdout)
+                else:
+                    print(f"[FAIL] {file}")
+                    print(res.stderr)
+                    all_passed = False
             else:
-                print(f"[FAIL] {file}")
-                print(res.stderr)
-                all_passed = False
+                cmd = ["docker", "compose", "exec", "-T", "db", "mysql", "-u", "root", f"-p{root_pass}", db_name]
+                with open(file_path, 'r') as f:
+                    res = subprocess.run(cmd, stdin=f, capture_output=True, text=True, env=sys_env)
+                if res.returncode == 0:
+                    print(f"[PASS] {file}")
+                else:
+                    print(f"[FAIL] {file}")
+                    print(res.stderr)
+                    all_passed = False
                 
     if not all_passed:
         print("Some tests failed.")
