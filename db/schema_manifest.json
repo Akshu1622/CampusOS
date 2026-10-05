@@ -1,0 +1,2653 @@
+{
+  "user_account": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "password_hash",
+        "type": "VARCHAR(255)",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "last_login",
+        "type": "DATETIME",
+        "nullable": true
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "employee_id",
+        "type": "BIGINT",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "employee_id",
+        "ref_table": "employee",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_username",
+        "columns": [
+          "username"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "status",
+        "rule": "IN ('ACTIVE', 'INACTIVE', 'LOCKED')"
+      }
+    ]
+  },
+  "role": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_name",
+        "columns": [
+          "name"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "permission_set": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_name",
+        "columns": [
+          "name"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "role_assignment": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "role_id",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "user_id",
+      "role_id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "user_id",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      },
+      {
+        "column": "role_id",
+        "ref_table": "role",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "PK_user_role",
+        "columns": [
+          "user_id",
+          "role_id"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "admin_permission_set_assignment": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "permission_set_id",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "user_id",
+      "permission_set_id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "user_id",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      },
+      {
+        "column": "permission_set_id",
+        "ref_table": "permission_set",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "PK_user_perm",
+        "columns": [
+          "user_id",
+          "permission_set_id"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "refresh_token": {
+    "columns": [
+      {
+        "name": "token_hash",
+        "type": "VARCHAR(255)",
+        "nullable": false
+      },
+      {
+        "name": "user_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "expires_at",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "is_revoked",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "token_hash"
+    ],
+    "foreign_keys": [
+      {
+        "column": "user_id",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": []
+  },
+  "login_attempt": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "attempt_time",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "success",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [],
+    "checks": []
+  },
+  "department": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "code",
+        "type": "VARCHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "head_employee_id",
+        "type": "BIGINT",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "head_employee_id",
+        "ref_table": "employee",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_code",
+        "columns": [
+          "code"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "program": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "code",
+        "type": "VARCHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "department_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "duration_years",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "credits_required",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "department_id",
+        "ref_table": "department",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_code",
+        "columns": [
+          "code"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "duration_years",
+        "rule": "duration_years > 0"
+      },
+      {
+        "column": "credits_required",
+        "rule": "credits_required > 0"
+      }
+    ]
+  },
+  "academic_term": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "term_identifier",
+        "type": "VARCHAR(15)",
+        "nullable": false
+      },
+      {
+        "name": "term_year",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "term_label",
+        "type": "VARCHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "is_current",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_term_identifier",
+        "columns": [
+          "term_identifier"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "term_identifier",
+        "rule": "REGEXP '^[0-9]{4}-(FALL\\"
+      },
+      {
+        "column": "end_date",
+        "rule": "end_date > start_date"
+      }
+    ]
+  },
+  "student": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "global_student_id",
+        "type": "VARCHAR(15)",
+        "nullable": false
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "phone",
+        "type": "VARCHAR(20)",
+        "nullable": true
+      },
+      {
+        "name": "program_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "batch_year",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "program_id",
+        "ref_table": "program",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_global_id",
+        "columns": [
+          "global_student_id"
+        ]
+      },
+      {
+        "name": "UK_email",
+        "columns": [
+          "email"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "global_student_id",
+        "rule": "REGEXP '^STU-[0-9]{4}-[0-9]{6}$'"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('ACTIVE', 'ALUMNI', 'DROPPED')"
+      }
+    ]
+  },
+  "general_audit_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "actor_user_id",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "action",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "entity_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "entity_id",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "before_state",
+        "type": "JSON",
+        "nullable": true
+      },
+      {
+        "name": "after_state",
+        "type": "JSON",
+        "nullable": true
+      },
+      {
+        "name": "timestamp",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "actor_user_id",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": []
+  },
+  "course": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "code",
+        "type": "VARCHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "credits",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "department_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "department_id",
+        "ref_table": "department",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_code",
+        "columns": [
+          "code"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "code",
+        "rule": "REGEXP '^[A-Z]{2,4}[0-9]{3,4}$'"
+      },
+      {
+        "column": "credits",
+        "rule": "credits >= 0"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('ACTIVE', 'RETIRED')"
+      }
+    ]
+  },
+  "curriculum_mapping": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "program_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "semester",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "course_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "type",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "program_id",
+        "ref_table": "program",
+        "ref_column": "id"
+      },
+      {
+        "column": "course_id",
+        "ref_table": "course",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_prog_sem_course",
+        "columns": [
+          "program_id",
+          "semester",
+          "course_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "semester",
+        "rule": "semester > 0"
+      },
+      {
+        "column": "type",
+        "rule": "IN ('CORE', 'ELECTIVE')"
+      }
+    ]
+  },
+  "course_offering": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "course_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "term_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "faculty_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "section",
+        "type": "VARCHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "capacity",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "course_id",
+        "ref_table": "course",
+        "ref_column": "id"
+      },
+      {
+        "column": "term_id",
+        "ref_table": "academic_term",
+        "ref_column": "id"
+      },
+      {
+        "column": "faculty_id",
+        "ref_table": "employee",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_course_term_sec",
+        "columns": [
+          "course_id",
+          "term_id",
+          "section"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "capacity",
+        "rule": "capacity > 0"
+      }
+    ]
+  },
+  "enrollment": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "offering_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "enrolled_date",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "offering_id",
+        "ref_table": "course_offering",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_student_offering",
+        "columns": [
+          "student_id",
+          "offering_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "status",
+        "rule": "IN ('ENROLLED', 'DROPPED', 'WITHDRAWN')"
+      }
+    ]
+  },
+  "bulk_enrollment_batch": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "batch_id",
+        "type": "VARCHAR(17)",
+        "nullable": false
+      },
+      {
+        "name": "run_by",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "run_date",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "total_processed",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "total_success",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "total_failed",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "run_by",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_batch_id",
+        "columns": [
+          "batch_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "batch_id",
+        "rule": "REGEXP '^BAT-[0-9]{8}-[0-9]{4}$'"
+      },
+      {
+        "column": "total_processed",
+        "rule": "total_processed >= 0"
+      },
+      {
+        "column": "total_success",
+        "rule": "total_success >= 0"
+      },
+      {
+        "column": "total_failed",
+        "rule": "total_failed >= 0"
+      }
+    ]
+  },
+  "bulk_enrollment_batch_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "batch_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "offering_id",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "message",
+        "type": "VARCHAR(255)",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "batch_id",
+        "ref_table": "bulk_enrollment_batch",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "status",
+        "rule": "IN ('SUCCESS', 'FAILED', 'SKIPPED')"
+      }
+    ]
+  },
+  "attendance_session": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "offering_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "session_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "slot",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "marked_by",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "marked_at",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "offering_id",
+        "ref_table": "course_offering",
+        "ref_column": "id"
+      },
+      {
+        "column": "marked_by",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_offering_date_slot",
+        "columns": [
+          "offering_id",
+          "session_date",
+          "slot"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "attendance_record": {
+    "columns": [
+      {
+        "name": "session_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "enrollment_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "session_id",
+      "enrollment_id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "session_id",
+        "ref_table": "attendance_session",
+        "ref_column": "id"
+      },
+      {
+        "column": "enrollment_id",
+        "ref_table": "enrollment",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "status",
+        "rule": "IN ('PRESENT', 'ABSENT')"
+      }
+    ]
+  },
+  "exam": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "offering_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "exam_type",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "exam_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "max_marks",
+        "type": "DECIMAL(5,2)",
+        "nullable": false
+      },
+      {
+        "name": "reg_start_date",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "reg_end_date",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "offering_id",
+        "ref_table": "course_offering",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_offering_type",
+        "columns": [
+          "offering_id",
+          "exam_type"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "max_marks",
+        "rule": "max_marks > 0"
+      },
+      {
+        "column": "reg_end_date",
+        "rule": "reg_end_date > reg_start_date"
+      }
+    ]
+  },
+  "exam_registration": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "exam_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "registered_at",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "exam_id",
+        "ref_table": "exam",
+        "ref_column": "id"
+      },
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_exam_student",
+        "columns": [
+          "exam_id",
+          "student_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "status",
+        "rule": "IN ('REGISTERED', 'CANCELLED')"
+      }
+    ]
+  },
+  "exam_marks_result": {
+    "columns": [
+      {
+        "name": "registration_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "marks",
+        "type": "DECIMAL(5,2)",
+        "nullable": false
+      },
+      {
+        "name": "grade",
+        "type": "VARCHAR(2)",
+        "nullable": true
+      },
+      {
+        "name": "grade_points",
+        "type": "DECIMAL(4,2)",
+        "nullable": true
+      },
+      {
+        "name": "is_published",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "registration_id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "registration_id",
+        "ref_table": "exam_registration",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "marks",
+        "rule": "marks >= 0"
+      },
+      {
+        "column": "grade_points",
+        "rule": "grade_points >= 0"
+      }
+    ]
+  },
+  "grade_scale": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "grade",
+        "type": "VARCHAR(2)",
+        "nullable": false
+      },
+      {
+        "name": "min_marks_pct",
+        "type": "DECIMAL(5,2)",
+        "nullable": false
+      },
+      {
+        "name": "max_marks_pct",
+        "type": "DECIMAL(5,2)",
+        "nullable": false
+      },
+      {
+        "name": "grade_points",
+        "type": "DECIMAL(4,2)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_grade",
+        "columns": [
+          "grade"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "min_marks_pct",
+        "rule": "min_marks_pct >= 0"
+      },
+      {
+        "column": "max_marks_pct",
+        "rule": "max_marks_pct <= 100"
+      },
+      {
+        "column": "grade_points",
+        "rule": "grade_points >= 0"
+      }
+    ]
+  },
+  "semester_result": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "term_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "total_credits",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "sgpa",
+        "type": "DECIMAL(4,2)",
+        "nullable": false
+      },
+      {
+        "name": "cgpa",
+        "type": "DECIMAL(4,2)",
+        "nullable": false
+      },
+      {
+        "name": "computed_at",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "term_id",
+        "ref_table": "academic_term",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_student_term",
+        "columns": [
+          "student_id",
+          "term_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "total_credits",
+        "rule": "total_credits >= 0"
+      },
+      {
+        "column": "sgpa",
+        "rule": "sgpa >= 0"
+      },
+      {
+        "column": "cgpa",
+        "rule": "cgpa >= 0"
+      }
+    ]
+  },
+  "fee_structure": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "program_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "term_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "structure_name",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "program_id",
+        "ref_table": "program",
+        "ref_column": "id"
+      },
+      {
+        "column": "term_id",
+        "ref_table": "academic_term",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_prog_term",
+        "columns": [
+          "program_id",
+          "term_id"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "fee_component": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "structure_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "component_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "amount",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "due_date",
+        "type": "DATE",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "structure_id",
+        "ref_table": "fee_structure",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_struct_comp",
+        "columns": [
+          "structure_id",
+          "component_name"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "amount",
+        "rule": "amount >= 0"
+      }
+    ]
+  },
+  "student_fee": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "component_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "amount_due",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "amount_paid",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "component_id",
+        "ref_table": "fee_component",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_student_comp",
+        "columns": [
+          "student_id",
+          "component_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "amount_due",
+        "rule": "amount_due >= 0"
+      },
+      {
+        "column": "amount_paid",
+        "rule": "amount_paid >= 0"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('PENDING', 'PARTIAL', 'PAID')"
+      }
+    ]
+  },
+  "late_fee_rule": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "rule_type",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "penalty_amount",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "max_penalty",
+        "type": "DECIMAL(10,2)",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "rule_type",
+        "rule": "IN ('FLAT', 'PER_DAY')"
+      },
+      {
+        "column": "penalty_amount",
+        "rule": "penalty_amount >= 0"
+      },
+      {
+        "column": "max_penalty",
+        "rule": "max_penalty >= 0"
+      }
+    ]
+  },
+  "payment": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "amount",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "payment_mode",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "reference_no",
+        "type": "VARCHAR(50)",
+        "nullable": true
+      },
+      {
+        "name": "payment_date",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_reference",
+        "columns": [
+          "reference_no"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "amount",
+        "rule": "amount > 0"
+      },
+      {
+        "column": "payment_mode",
+        "rule": "IN ('CASH', 'ONLINE', 'DD')"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('SUCCESS', 'FAILED')"
+      }
+    ]
+  },
+  "payment_allocation": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "payment_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_fee_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "allocated_principal",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "allocated_late_fee",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "payment_id",
+        "ref_table": "payment",
+        "ref_column": "id"
+      },
+      {
+        "column": "student_fee_id",
+        "ref_table": "student_fee",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_pay_fee",
+        "columns": [
+          "payment_id",
+          "student_fee_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "allocated_principal",
+        "rule": "allocated_principal >= 0"
+      },
+      {
+        "column": "allocated_late_fee",
+        "rule": "allocated_late_fee >= 0"
+      }
+    ]
+  },
+  "receipt": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "receipt_number",
+        "type": "VARCHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "payment_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "generated_at",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "payment_id",
+        "ref_table": "payment",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_receipt_num",
+        "columns": [
+          "receipt_number"
+        ]
+      },
+      {
+        "name": "UK_payment",
+        "columns": [
+          "payment_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "receipt_number",
+        "rule": "REGEXP '^RCP-[0-9]{8}-[0-9]{5}$'"
+      }
+    ]
+  },
+  "fee_audit_log": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "entity_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "entity_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "old_value",
+        "type": "DECIMAL(10,2)",
+        "nullable": true
+      },
+      {
+        "name": "new_value",
+        "type": "DECIMAL(10,2)",
+        "nullable": true
+      },
+      {
+        "name": "changed_by",
+        "type": "VARCHAR(50)",
+        "nullable": true
+      },
+      {
+        "name": "changed_at",
+        "type": "DATETIME",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [],
+    "checks": []
+  },
+  "hostel_fee_component_link": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "fee_component_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "hostel_id",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "fee_component_id",
+        "ref_table": "fee_component",
+        "ref_column": "id"
+      },
+      {
+        "column": "hostel_id",
+        "ref_table": "hostel",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_comp_hostel",
+        "columns": [
+          "fee_component_id",
+          "hostel_id"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "employee": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "employee_id",
+        "type": "VARCHAR(13)",
+        "nullable": false
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "department_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "designation_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "joining_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "emp_type",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "department_id",
+        "ref_table": "department",
+        "ref_column": "id"
+      },
+      {
+        "column": "designation_id",
+        "ref_table": "designation",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_employee_id",
+        "columns": [
+          "employee_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "employee_id",
+        "rule": "REGEXP '^EMP-[0-9]{4}-[0-9]{4}$'"
+      },
+      {
+        "column": "emp_type",
+        "rule": "IN ('FACULTY', 'STAFF')"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('ACTIVE', 'INACTIVE')"
+      }
+    ]
+  },
+  "designation": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "job_level",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_title",
+        "columns": [
+          "title"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "job_level",
+        "rule": "job_level > 0"
+      }
+    ]
+  },
+  "leave_type": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(50)",
+        "nullable": false
+      },
+      {
+        "name": "is_paid",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_name",
+        "columns": [
+          "name"
+        ]
+      }
+    ],
+    "checks": []
+  },
+  "leave_entitlement": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "leave_type_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "emp_type",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "annual_quota",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "carry_forward",
+        "type": "TINYINT(1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "leave_type_id",
+        "ref_table": "leave_type",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_type_emp",
+        "columns": [
+          "leave_type_id",
+          "emp_type"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "emp_type",
+        "rule": "IN ('FACULTY', 'STAFF')"
+      },
+      {
+        "column": "annual_quota",
+        "rule": "annual_quota >= 0"
+      }
+    ]
+  },
+  "leave_application": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "employee_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "leave_type_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "start_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "end_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "days",
+        "type": "DECIMAL(4,1)",
+        "nullable": false
+      },
+      {
+        "name": "reason",
+        "type": "TEXT",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "decision_by",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "decision_date",
+        "type": "DATETIME",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "employee_id",
+        "ref_table": "employee",
+        "ref_column": "id"
+      },
+      {
+        "column": "leave_type_id",
+        "ref_table": "leave_type",
+        "ref_column": "id"
+      },
+      {
+        "column": "decision_by",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "end_date",
+        "rule": "end_date >= start_date"
+      },
+      {
+        "column": "days",
+        "rule": "days > 0"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('PENDING', 'APPROVED', 'REJECTED')"
+      }
+    ]
+  },
+  "salary_structure": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "designation_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "basic_pay",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "allowances",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "standard_deductions",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "designation_id",
+        "ref_table": "designation",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_designation",
+        "columns": [
+          "designation_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "basic_pay",
+        "rule": "basic_pay >= 0"
+      },
+      {
+        "column": "allowances",
+        "rule": "allowances >= 0"
+      },
+      {
+        "column": "standard_deductions",
+        "rule": "standard_deductions >= 0"
+      }
+    ]
+  },
+  "payroll_run": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "payroll_month",
+        "type": "VARCHAR(7)",
+        "nullable": false
+      },
+      {
+        "name": "run_date",
+        "type": "DATETIME",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "run_by",
+        "type": "BIGINT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "run_by",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_month",
+        "columns": [
+          "payroll_month"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "payroll_month",
+        "rule": "REGEXP '^[0-9]{4}-(0[1-9]\\"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('DRAFT', 'FINALIZED')"
+      }
+    ]
+  },
+  "payslip": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "run_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "employee_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "gross_pay",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "total_deductions",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "net_pay",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      },
+      {
+        "name": "leave_days_deducted",
+        "type": "DECIMAL(4,1)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "run_id",
+        "ref_table": "payroll_run",
+        "ref_column": "id"
+      },
+      {
+        "column": "employee_id",
+        "ref_table": "employee",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_run_emp",
+        "columns": [
+          "run_id",
+          "employee_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "gross_pay",
+        "rule": "gross_pay >= 0"
+      },
+      {
+        "column": "total_deductions",
+        "rule": "total_deductions >= 0"
+      },
+      {
+        "column": "net_pay",
+        "rule": "net_pay >= 0"
+      },
+      {
+        "column": "leave_days_deducted",
+        "rule": "leave_days_deducted >= 0"
+      }
+    ]
+  },
+  "payslip_line": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "payslip_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "component_type",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "description",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "amount",
+        "type": "DECIMAL(10,2)",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "payslip_id",
+        "ref_table": "payslip",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "component_type",
+        "rule": "IN ('EARNING', 'DEDUCTION')"
+      },
+      {
+        "column": "amount",
+        "rule": "amount >= 0"
+      }
+    ]
+  },
+  "hostel": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(100)",
+        "nullable": false
+      },
+      {
+        "name": "gender_block",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "total_capacity",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [],
+    "uniques": [
+      {
+        "name": "UK_name",
+        "columns": [
+          "name"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "gender_block",
+        "rule": "IN ('MALE', 'FEMALE', 'COED')"
+      },
+      {
+        "column": "total_capacity",
+        "rule": "total_capacity >= 0"
+      }
+    ]
+  },
+  "room": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "hostel_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "room_number",
+        "type": "VARCHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "bed_capacity",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "available_beds",
+        "type": "INT",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "hostel_id",
+        "ref_table": "hostel",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_hostel_room",
+        "columns": [
+          "hostel_id",
+          "room_number"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "bed_capacity",
+        "rule": "bed_capacity > 0"
+      },
+      {
+        "column": "available_beds",
+        "rule": "available_beds >= 0 AND available_beds <= bed_capacity"
+      }
+    ]
+  },
+  "hostel_allocation": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "room_id",
+        "type": "INT",
+        "nullable": false
+      },
+      {
+        "name": "from_date",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "to_date",
+        "type": "DATE",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "room_id",
+        "ref_table": "room",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UK_student_active",
+        "columns": [
+          "student_id"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "column": "to_date",
+        "rule": "to_date IS NULL OR to_date >= from_date"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('ACTIVE', 'VACATED')"
+      }
+    ]
+  },
+  "hostel_request": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "student_id",
+        "type": "BIGINT",
+        "nullable": false
+      },
+      {
+        "name": "request_type",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "details",
+        "type": "TEXT",
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "ENUM",
+        "nullable": false
+      },
+      {
+        "name": "decision_by",
+        "type": "BIGINT",
+        "nullable": true
+      },
+      {
+        "name": "remark",
+        "type": "TEXT",
+        "nullable": true
+      }
+    ],
+    "primary_keys": [
+      "id"
+    ],
+    "foreign_keys": [
+      {
+        "column": "student_id",
+        "ref_table": "student",
+        "ref_column": "id"
+      },
+      {
+        "column": "decision_by",
+        "ref_table": "user_account",
+        "ref_column": "id"
+      }
+    ],
+    "uniques": [],
+    "checks": [
+      {
+        "column": "request_type",
+        "rule": "IN ('ALLOCATION', 'ROOM_CHANGE', 'VACATE')"
+      },
+      {
+        "column": "status",
+        "rule": "IN ('PENDING', 'APPROVED', 'REJECTED')"
+      }
+    ]
+  }
+}
