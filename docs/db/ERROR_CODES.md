@@ -23,11 +23,14 @@ The backend API maps these errors to the specified HTTP Status codes.
 | 53002 | EXAM_REGISTRATION_CLOSED | The exam registration window is closed. | 400 |
 | 53003 | MARKS_OUT_OF_BOUNDS | Marks entered are outside the allowed range of 0 to max. | 400 |
 | 53004 | RESULT_ALREADY_PUBLISHED | The result for this exam is already published and cannot be modified. | 409 |
+| 53005 | EXAM_STUDENT_NOT_ENROLLED | The student is not actively enrolled in the course offering. | 400 |
+| 53006 | EXAM_DUPLICATE_REGISTRATION | The student is already registered for this exam. | 409 |
 
 ## M4: Finance (54000 - 54999)
 | ErrNo | Name | Message | HTTP Status |
 |-------|------|---------|-------------|
 | 54001 | PAYMENT_EXCEEDS_BALANCE | The payment amount exceeds the outstanding balance. | 400 |
+| 54002 | DUE_ALREADY_SETTLED | The fee due is already fully settled. | 400 |
 
 ## M5: HR, Leave, and Payroll (55000 - 55999)
 | ErrNo | Name | Message | HTTP Status |
