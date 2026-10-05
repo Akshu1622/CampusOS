@@ -1,0 +1,6 @@
+*.sql eol=lf
+*.py eol=lf
+*.sh eol=lf
+*.md eol=lf
+*.json eol=lf
+*.yml eol=lf
