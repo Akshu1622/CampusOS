@@ -26,8 +26,8 @@ export function UserManagementPage() {
     setLoading(true)
     try {
       const res = await apiClient(`/users?page=${page}&page_size=${pageSize}&search=${search}`)
-      setUsers(res.items || [])
-      setTotal(res.total || 0)
+      setUsers((res as any)?.items || [])
+      setTotal((res as any)?.total || 0)
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch users')
     } finally {
@@ -147,7 +147,7 @@ export function UserManagementPage() {
             label="Role"
             options={[{value: 'Admin', label: 'Admin'}, {value: 'Faculty', label: 'Faculty'}, {value: 'Student', label: 'Student'}]}
             value={formData.role}
-            onChange={(v) => setFormData({...formData, role: v})}
+            onChange={(e) => setFormData({...formData, role: (e as any)?.target?.value || e})}
           />
           <Input 
             label="Password" 

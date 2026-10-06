@@ -103,7 +103,7 @@ export function ProgramManagementPage() {
             required 
             options={departments.map(d => ({ value: String(d.id || d.code), label: d.name }))} 
             value={formData.department_id} 
-            onChange={(v) => setFormData({...formData, department_id: v})} 
+            onChange={(e) => setFormData({...formData, department_id: (e as any)?.target?.value || e})} 
           />
           <Input label="Duration (Years)" type="number" required value={formData.duration_years} onChange={(e) => setFormData({...formData, duration_years: e.target.value})} placeholder="e.g. 4" />
           <Input label="Total Credits Required" type="number" required value={formData.total_credits} onChange={(e) => setFormData({...formData, total_credits: e.target.value})} placeholder="e.g. 160" />

@@ -26,8 +26,8 @@ export function StudentMasterPage() {
         apiClient(`/students?page=${page}&page_size=${pageSize}&search=${search}`),
         apiClient('/programs')
       ])
-      setStudents(stuRes.items || [])
-      setTotal(stuRes.total || 0)
+      setStudents((stuRes as any)?.items || [])
+      setTotal((stuRes as any)?.total || 0)
       setPrograms(Array.isArray(progRes) ? progRes : [])
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch data')
@@ -162,7 +162,7 @@ export function StudentMasterPage() {
                 required 
                 options={programs.map(p => ({ value: String(p.id || p.name), label: p.name }))}
                 value={formData.program_id}
-                onChange={(v) => setFormData({...formData, program_id: v})}
+                onChange={(e) => setFormData({...formData, program_id: (e as any)?.target?.value || e})}
               />
               <Input label="Batch Year" type="number" required value={formData.batch_year} onChange={(e) => setFormData({...formData, batch_year: e.target.value})} placeholder="e.g. 2025" />
             </div>

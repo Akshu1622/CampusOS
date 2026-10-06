@@ -5,7 +5,8 @@ import { Pagination } from './Pagination'
 export interface Column<T> {
   key: string
   header: string | React.ReactNode
-  cell: (item: T) => React.ReactNode
+  cell?: (item: T) => React.ReactNode
+  render?: (item: T) => React.ReactNode
   width?: string
   align?: 'left' | 'center' | 'right'
 }
@@ -13,10 +14,11 @@ export interface Column<T> {
 interface TableProps<T> {
   data: T[]
   columns: Column<T>[]
-  keyExtractor: (item: T) => string
+  keyExtractor?: (item: T) => string
   isLoading?: boolean
   selectedIds?: string[]
   onSelect?: (ids: string[]) => void
+  emptyMessage?: string
   pagination?: {
     currentPage: number
     totalItems: number
@@ -26,14 +28,15 @@ interface TableProps<T> {
   }
 }
 
-export function Table<T>({ data, columns, keyExtractor, isLoading, selectedIds, onSelect, pagination }: TableProps<T>) {
+export function Table<T>({ data, columns, keyExtractor, isLoading, selectedIds, onSelect, pagination, emptyMessage = 'No records found.' }: TableProps<T>) {
+  const keyFn = keyExtractor || ((item: any) => String(item.id ?? item.code ?? Math.random()))
   const allSelected = data.length > 0 && selectedIds?.length === data.length
   const someSelected = selectedIds && selectedIds.length > 0 && selectedIds.length < data.length
 
   const handleSelectAll = () => {
     if (!onSelect) return
     if (allSelected) onSelect([])
-    else onSelect(data.map(keyExtractor))
+    else onSelect(data.map(keyFn))
   }
 
   const handleSelectOne = (id: string) => {
@@ -91,12 +94,12 @@ export function Table<T>({ data, columns, keyExtractor, isLoading, selectedIds, 
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (onSelect ? 1 : 0)} style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  No records found.
+                  {emptyMessage}
                 </td>
               </tr>
             ) : (
               data.map((item) => {
-                const id = keyExtractor(item)
+                const id = keyFn(item)
                 const isSelected = selectedIds?.includes(id)
                 return (
                   <tr key={id} style={{ 
@@ -120,7 +123,7 @@ export function Table<T>({ data, columns, keyExtractor, isLoading, selectedIds, 
                         fontSize: '13px',
                         textAlign: col.align || 'left'
                       }}>
-                        {col.cell(item)}
+                        {col.cell ? col.cell(item) : col.render ? col.render(item) : null}
                       </td>
                     ))}
                   </tr>

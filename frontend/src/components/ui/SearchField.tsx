@@ -1,4 +1,4 @@
-import React, { forwardRef, InputHTMLAttributes } from 'react'
+import React, { forwardRef, type InputHTMLAttributes } from 'react'
 
 export interface SearchFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   onClear?: () => void
