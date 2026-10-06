@@ -14,6 +14,18 @@ import { DepartmentManagementPage } from '../features/m1_core/pages/DepartmentMa
 import { ProgramManagementPage } from '../features/m1_core/pages/ProgramManagementPage'
 import { TermManagementPage } from '../features/m1_core/pages/TermManagementPage'
 import { StudentMasterPage } from '../features/m1_core/pages/StudentMasterPage'
+import {
+  FeeStructureManagementPage,
+  FeeAssignmentWizardPage,
+  LateFeeRuleConfigPage,
+  MyFeesAndDuesPage,
+  PayFeeWizardPage,
+  PaymentConfirmationReceiptPage,
+  ReceiptPaymentHistoryPage,
+  PaymentLedgerPage,
+  FeeDefaultersPage,
+  FeeChangeAuditLogPage,
+} from '../features/m4_finance/pages'
 
 // Placeholders for dashboards
 const AdminDashboard = () => <div className="p-6"><h1>Admin Dashboard Placeholder</h1></div>
@@ -51,6 +63,13 @@ export const router = createBrowserRouter([
       { path: 'programs', element: <ProgramManagementPage /> },
       { path: 'terms', element: <TermManagementPage /> },
       { path: 'students', element: <StudentMasterPage /> },
+      { path: 'finance/fee-structures', element: <FeeStructureManagementPage /> },
+      { path: 'finance/fee-assignment', element: <FeeAssignmentWizardPage /> },
+      { path: 'finance/late-fee-rules', element: <LateFeeRuleConfigPage /> },
+      { path: 'finance/receipt-history', element: <ReceiptPaymentHistoryPage /> },
+      { path: 'finance/ledger', element: <PaymentLedgerPage /> },
+      { path: 'finance/defaulters', element: <FeeDefaultersPage /> },
+      { path: 'finance/audit', element: <FeeChangeAuditLogPage /> },
     ],
   },
   {
@@ -77,6 +96,10 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <StudentDashboard /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'fees', element: <MyFeesAndDuesPage /> },
+      { path: 'pay', element: <PayFeeWizardPage /> },
+      { path: 'receipt/:id', element: <PaymentConfirmationReceiptPage /> },
+      { path: 'receipt-history', element: <ReceiptPaymentHistoryPage /> },
     ],
   },
   {
