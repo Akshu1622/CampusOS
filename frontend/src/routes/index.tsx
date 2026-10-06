@@ -48,10 +48,15 @@ import {
   S07HostelRequestReviewPage,
 } from '../features/m6_hostel/pages'
 
-// Placeholders for dashboards
-const AdminDashboard = () => <div className="p-6"><h1>Admin Dashboard Placeholder</h1></div>
-const FacultyDashboard = () => <div className="p-6"><h1>Faculty Dashboard Placeholder</h1></div>
-const StudentDashboard = () => <div className="p-6"><h1>Student Dashboard Placeholder</h1></div>
+import {
+  AdminDashboardPage,
+  FacultyDashboardPage,
+  StudentDashboardPage,
+  R01ReportsHubPage,
+  R02ReportPage,
+  R03AuditLogViewerPage,
+  R04DataIntegrityStatusPage,
+} from '../features/m7_analytics/pages'
 
 export const router = createBrowserRouter([
   {
@@ -76,7 +81,7 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <AdminDashboard /> },
+      { index: true, element: <AdminDashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'users', element: <UserManagementPage /> },
       { path: 'roles', element: <RoleManagementPage /> },
@@ -102,6 +107,10 @@ export const router = createBrowserRouter([
       { path: 'hostel/room-allocation', element: <S02RoomAllocationPage /> },
       { path: 'hostel/occupancy-dashboard', element: <S03HostelOccupancyDashboardPage /> },
       { path: 'hostel/requests', element: <S07HostelRequestReviewPage /> },
+      { path: 'analytics/reports', element: <R01ReportsHubPage /> },
+      { path: 'analytics/reports/:reportKey', element: <R02ReportPage /> },
+      { path: 'analytics/audit-logs', element: <R03AuditLogViewerPage /> },
+      { path: 'analytics/integrity-checks', element: <R04DataIntegrityStatusPage /> },
     ],
   },
   {
@@ -113,7 +122,7 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <FacultyDashboard /> },
+      { index: true, element: <FacultyDashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'hr/apply-leave', element: <ApplyLeavePage /> },
       { path: 'hr/my-leave', element: <MyLeavePage /> },
@@ -129,7 +138,7 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <StudentDashboard /> },
+      { index: true, element: <StudentDashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'fees', element: <MyFeesAndDuesPage /> },
       { path: 'pay', element: <PayFeeWizardPage /> },
