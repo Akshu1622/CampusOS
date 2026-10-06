@@ -22,8 +22,8 @@ export async function apiClient<T>(endpoint: string, options: FetchOptions = {})
 
   const token = localStorage.getItem('access_token')
 
-  const headers: HeadersInit = {
-    ...customHeaders,
+  const headers: Record<string, string> = {
+    ...(customHeaders as Record<string, string>),
   }
 
   if (token) {
@@ -58,7 +58,7 @@ export async function apiClient<T>(endpoint: string, options: FetchOptions = {})
     }
   }
 
-  let response = await fetch(url, config)
+  const response = await fetch(url, config)
 
   if (response.status === 401 && token) {
     const refreshToken = localStorage.getItem('refresh_token')

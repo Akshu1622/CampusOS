@@ -4,10 +4,13 @@ interface CardProps {
   children: React.ReactNode
   variant?: 'standard' | 'compact' | 'tinted' | 'banner'
   className?: string
+  style?: React.CSSProperties
+  padding?: number | string
+  title?: string
   onClick?: () => void
 }
 
-export function Card({ children, variant = 'standard', className = '', onClick }: CardProps) {
+export function Card({ children, variant = 'standard', className = '', style, padding, title, onClick }: CardProps) {
   const paddings = {
     standard: '20px',
     compact: '16px',
@@ -29,6 +32,8 @@ export function Card({ children, variant = 'standard', className = '', onClick }
     banner: 'var(--radius-xl)'
   }
 
+  const effectivePadding = padding !== undefined ? (typeof padding === 'number' ? `${padding}px` : padding) : paddings[variant]
+
   return (
     <div
       className={className}
@@ -36,11 +41,12 @@ export function Card({ children, variant = 'standard', className = '', onClick }
       style={{
         background: bgColors[variant],
         borderRadius: radii[variant],
-        padding: paddings[variant],
+        padding: effectivePadding,
         border: variant === 'tinted' || variant === 'banner' ? 'none' : '1px solid var(--color-border)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'box-shadow 150ms',
         boxShadow: 'none',
+        ...style,
       }}
       onMouseEnter={(e) => {
         if (onClick) {
@@ -53,6 +59,11 @@ export function Card({ children, variant = 'standard', className = '', onClick }
         }
       }}
     >
+      {title && (
+        <div style={{ paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid var(--color-border)' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{title}</h3>
+        </div>
+      )}
       {children}
     </div>
   )

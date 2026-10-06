@@ -5,14 +5,18 @@ import { AlertTriangle, AlertCircle } from 'lucide-react'
 
 interface ConfirmationDialogProps {
   isOpen: boolean
-  onClose: () => void
+  onClose?: () => void
   onConfirm: () => void
   title: string
   message: string
   confirmText?: string
   cancelText?: string
+  confirmLabel?: string
+  cancelLabel?: string
   isDestructive?: boolean
+  isDanger?: boolean
   isLoading?: boolean
+  onCancel?: () => void
 }
 
 export function ConfirmationDialog({
@@ -21,19 +25,27 @@ export function ConfirmationDialog({
   onConfirm,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
+  confirmLabel,
+  cancelLabel,
   isDestructive = false,
-  isLoading = false
+  isDanger = false,
+  isLoading = false,
+  onCancel,
 }: ConfirmationDialogProps) {
-  const Icon = isDestructive ? AlertCircle : AlertTriangle
-  const chipBg = isDestructive ? 'var(--color-error-bg)' : 'var(--color-warning-bg)'
-  const chipColor = isDestructive ? 'var(--color-error)' : 'var(--color-warning)'
+  const handleClose = onClose || onCancel || (() => {})
+  const effectiveConfirmText = confirmText || confirmLabel || 'Confirm'
+  const effectiveCancelText = cancelText || cancelLabel || 'Cancel'
+  const effectiveDestructive = isDestructive || isDanger
+  const Icon = effectiveDestructive ? AlertCircle : AlertTriangle
+  const chipBg = effectiveDestructive ? 'var(--color-error-bg)' : 'var(--color-warning-bg)'
+  const chipColor = effectiveDestructive ? 'var(--color-error)' : 'var(--color-warning)'
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title=""
       size="sm"
     >
@@ -62,19 +74,19 @@ export function ConfirmationDialog({
       <div style={{ display: 'flex', gap: '12px', marginTop: '24px', width: '100%' }}>
         <Button 
           variant="secondary" 
-          onClick={onClose}
+          onClick={handleClose}
           style={{ flex: 1 }}
           disabled={isLoading}
         >
-          {cancelText}
+          {effectiveCancelText}
         </Button>
         <Button 
-          variant={isDestructive ? 'danger' : 'primary'} 
+          variant={effectiveDestructive ? 'danger' : 'primary'} 
           onClick={onConfirm}
           style={{ flex: 1 }}
           isLoading={isLoading}
         >
-          {confirmText}
+          {effectiveConfirmText}
         </Button>
       </div>
     </Modal>

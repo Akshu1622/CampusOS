@@ -51,7 +51,7 @@ export function ProfilePage() {
           </div>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Role</label>
-            <div style={{ fontSize: '14px', marginTop: '4px' }}>{user?.role}</div>
+            <div style={{ fontSize: '14px', marginTop: '4px' }}>{user?.roles?.join(', ')}</div>
           </div>
         </div>
       </Card>
@@ -60,7 +60,7 @@ export function ProfilePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Email</label>
-            <div style={{ fontSize: '14px', marginTop: '4px' }}>{user?.email || 'N/A'}</div>
+            <div style={{ fontSize: '14px', marginTop: '4px' }}>{(user as any)?.email || `${user?.username}@campus.edu`}</div>
           </div>
         </div>
       </Card>
@@ -118,7 +118,7 @@ export function ProfilePage() {
             <span style={{ fontSize: '14px', fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>ID: {user?.id}</span>
             <StatusPill label="Active" status="success" />
             <div style={{ padding: '2px 8px', borderRadius: '4px', backgroundColor: 'var(--color-surface-muted)', fontSize: '12px', fontWeight: 500 }}>
-              {user?.role}
+              {user?.roles?.[0] || 'User'}
             </div>
           </div>
         </div>

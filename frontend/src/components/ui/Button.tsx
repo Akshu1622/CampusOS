@@ -1,4 +1,4 @@
-import React, { ButtonHTMLAttributes } from 'react'
+import React, { type ButtonHTMLAttributes } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'tertiary' | 'danger' | 'subtle'
@@ -6,6 +6,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
+  icon?: React.ReactNode
 }
 
 export function Button({
@@ -15,10 +16,12 @@ export function Button({
   isLoading = false,
   leftIcon,
   rightIcon,
+  icon,
   className = '',
   disabled,
   ...props
 }: ButtonProps) {
+  const effectiveLeftIcon = leftIcon || icon
   const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2'
   
   const variants = {
@@ -71,8 +74,8 @@ export function Button({
     >
       {isLoading ? (
         <span className="animate-spin" style={{ marginRight: '8px', display: 'inline-block', width: '16px', height: '16px', border: '2px solid currentColor', borderRightColor: 'transparent', borderRadius: '50%' }}></span>
-      ) : leftIcon ? (
-        <span style={{ marginRight: '8px', display: 'flex' }}>{leftIcon}</span>
+      ) : effectiveLeftIcon ? (
+        <span style={{ marginRight: '8px', display: 'flex' }}>{effectiveLeftIcon}</span>
       ) : null}
       
       {children}
