@@ -40,6 +40,14 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'Payment Ledger', icon: <FileText size={20} />, href: '/admin/finance/ledger' },
     { label: 'Fee Defaulters', icon: <Users size={20} />, href: '/admin/finance/defaulters' },
     { label: 'Audit Log', icon: <CheckSquare size={20} />, href: '/admin/finance/audit' },
+    { label: 'HR & PAYROLL', type: 'group' },
+    { label: 'Employees', icon: <Users size={20} />, href: '/admin/hr/employees' },
+    { label: 'Designations', icon: <CheckSquare size={20} />, href: '/admin/hr/designations' },
+    { label: 'Leave Types', icon: <FileText size={20} />, href: '/admin/hr/leave-types' },
+    { label: 'Leave Approvals', icon: <CheckSquare size={20} />, href: '/admin/hr/leave-approvals' },
+    { label: 'Salary Structures', icon: <CreditCard size={20} />, href: '/admin/hr/salary-structures' },
+    { label: 'Payroll Run', icon: <CreditCard size={20} />, href: '/admin/hr/payroll-run' },
+    { label: 'Payroll Register', icon: <FileText size={20} />, href: '/admin/hr/payroll-register' },
   ]
 
   const facultyNav = [
@@ -48,6 +56,10 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'My Courses', icon: <BookOpen size={20} />, href: '/faculty/courses' },
     { label: 'TEACHING', type: 'group' },
     { label: 'Attendance', icon: <Calendar size={20} />, href: '/faculty/attendance' },
+    { label: 'HR & LEAVE', type: 'group' },
+    { label: 'Apply Leave', icon: <Calendar size={20} />, href: '/faculty/hr/apply-leave' },
+    { label: 'My Leave', icon: <FileText size={20} />, href: '/faculty/hr/my-leave' },
+    { label: 'Payslips', icon: <CreditCard size={20} />, href: '/faculty/hr/payslips' },
   ]
 
   const studentNav = [

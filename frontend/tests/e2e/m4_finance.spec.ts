@@ -6,11 +6,10 @@ test.describe('M4 Finance Smoke Tests', () => {
     // However, the instructions say "login with the right demo account...".
     // I will go to the login page, login as admin, then visit the page.
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
-    await page.waitForURL('/admin');
-
+    await page.waitForURL(/admin|faculty|student/);
     await page.goto('/admin/finance/fee-structures');
     await expect(page.locator('h1')).toContainText('Fee Structures');
     await expect(page.locator('table')).toBeVisible();
@@ -18,9 +17,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-02 Fee Assignment (Admin)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/admin/finance/fee-assignment');
     await expect(page.locator('h1')).toContainText('Fee Assignment Wizard');
@@ -28,9 +28,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-03 Late Fee Rule Config (Admin)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/admin/finance/late-fee-rules');
     await expect(page.locator('h1')).toContainText('Late Fee Rules');
@@ -38,9 +39,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-04 My Fees and Dues (Student)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'student@campusos.edu');
-    await page.fill('input[type="password"]', 'student123');
+    await page.fill('input[name="username"]', 'student1');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/student/fees');
     await expect(page.locator('h1')).toContainText('My Fees & Dues');
@@ -48,9 +50,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-05 Pay Fee Wizard (Student)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'student@campusos.edu');
-    await page.fill('input[type="password"]', 'student123');
+    await page.fill('input[name="username"]', 'student1');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/student/pay');
     await expect(page.locator('h1')).toContainText('Make Payment');
@@ -58,9 +61,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-06 Payment Confirmation Receipt (Student)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'student@campusos.edu');
-    await page.fill('input[type="password"]', 'student123');
+    await page.fill('input[name="username"]', 'student1');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/student/receipt/REC-001');
     await expect(page.locator('text=Payment Successful')).toBeVisible();
@@ -68,9 +72,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-07 Receipt Payment History (Student)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'student@campusos.edu');
-    await page.fill('input[type="password"]', 'student123');
+    await page.fill('input[name="username"]', 'student1');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/student/receipt-history');
     await expect(page.locator('h1')).toContainText('Payment History');
@@ -78,9 +83,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-08 Payment Ledger (Admin)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/admin/finance/ledger');
     await expect(page.locator('h1')).toContainText('Payment Ledger');
@@ -88,9 +94,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-09 Fee Defaulters (Admin)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/admin/finance/defaulters');
     await expect(page.locator('h1')).toContainText('Fee Defaulters');
@@ -98,9 +105,10 @@ test.describe('M4 Finance Smoke Tests', () => {
 
   test('F-10 Fee Change Audit Log (Admin)', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@campusos.edu');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[name="username"]', 'admin_core');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
+    await page.waitForURL(/admin|faculty|student/);
     
     await page.goto('/admin/finance/audit');
     await expect(page.locator('h1')).toContainText('Fee Change Audit Log');
