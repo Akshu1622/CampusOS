@@ -48,6 +48,11 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'Salary Structures', icon: <CreditCard size={20} />, href: '/admin/hr/salary-structures' },
     { label: 'Payroll Run', icon: <CreditCard size={20} />, href: '/admin/hr/payroll-run' },
     { label: 'Payroll Register', icon: <FileText size={20} />, href: '/admin/hr/payroll-register' },
+    { label: 'HOSTEL & ACCOMMODATION', type: 'group' },
+    { label: 'Dashboard', icon: <LayoutDashboard size={20} />, href: '/admin/hostel/occupancy-dashboard' },
+    { label: 'Management', icon: <CheckSquare size={20} />, href: '/admin/hostel/management' },
+    { label: 'Room Allocation', icon: <Users size={20} />, href: '/admin/hostel/room-allocation' },
+    { label: 'Hostel Requests', icon: <FileText size={20} />, href: '/admin/hostel/requests' },
   ]
 
   const facultyNav = [
@@ -71,6 +76,9 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'FINANCE', type: 'group' },
     { label: 'My Fees & Dues', icon: <CreditCard size={20} />, href: '/student/fees' },
     { label: 'Receipt History', icon: <FileText size={20} />, href: '/student/receipt-history' },
+    { label: 'HOSTEL', type: 'group' },
+    { label: 'My Hostel', icon: <CheckSquare size={20} />, href: '/student/hostel' },
+    { label: 'My Requests', icon: <FileText size={20} />, href: '/student/hostel/requests' },
   ]
 
   const navMap = {

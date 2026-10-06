@@ -38,6 +38,15 @@ import {
   PayrollRegisterPage,
   MyPayslipsPage,
 } from '../features/m5_hr/pages'
+import {
+  S01HostelRoomManagementPage,
+  S02RoomAllocationPage,
+  S03HostelOccupancyDashboardPage,
+  S04MyHostelPage,
+  S05NewHostelRequestPage,
+  S06MyHostelRequestsPage,
+  S07HostelRequestReviewPage,
+} from '../features/m6_hostel/pages'
 
 // Placeholders for dashboards
 const AdminDashboard = () => <div className="p-6"><h1>Admin Dashboard Placeholder</h1></div>
@@ -89,6 +98,10 @@ export const router = createBrowserRouter([
       { path: 'hr/salary-structures', element: <SalaryStructureManagementPage /> },
       { path: 'hr/payroll-run', element: <PayrollRunPage /> },
       { path: 'hr/payroll-register', element: <PayrollRegisterPage /> },
+      { path: 'hostel/management', element: <S01HostelRoomManagementPage /> },
+      { path: 'hostel/room-allocation', element: <S02RoomAllocationPage /> },
+      { path: 'hostel/occupancy-dashboard', element: <S03HostelOccupancyDashboardPage /> },
+      { path: 'hostel/requests', element: <S07HostelRequestReviewPage /> },
     ],
   },
   {
@@ -122,6 +135,9 @@ export const router = createBrowserRouter([
       { path: 'pay', element: <PayFeeWizardPage /> },
       { path: 'receipt/:id', element: <PaymentConfirmationReceiptPage /> },
       { path: 'receipt-history', element: <ReceiptPaymentHistoryPage /> },
+      { path: 'hostel', element: <S04MyHostelPage /> },
+      { path: 'hostel/new-request', element: <S05NewHostelRequestPage /> },
+      { path: 'hostel/requests', element: <S06MyHostelRequestsPage /> },
     ],
   },
   {

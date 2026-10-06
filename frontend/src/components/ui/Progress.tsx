@@ -93,3 +93,32 @@ export function Stepper({ steps, currentStep }: { steps: string[]; currentStep: 
     </div>
   )
 }
+
+interface ProgressProps {
+  value: number
+  max?: number
+  variant?: 'primary' | 'danger' | 'success' | 'warning'
+  size?: 'sm' | 'md'
+  className?: string
+}
+
+export function Progress({ value, max = 100, variant = 'primary', size = 'md', className = '' }: ProgressProps) {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100))
+  
+  let bgColor = 'var(--color-primary-500)'
+  if (variant === 'danger') bgColor = 'var(--color-error)'
+  if (variant === 'success') bgColor = 'var(--color-success)'
+  if (variant === 'warning') bgColor = 'var(--color-warning)'
+  if (variant === 'primary') bgColor = 'var(--color-primary)'
+
+  const height = size === 'sm' ? '4px' : '8px'
+
+  return (
+    <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${className}`} style={{ height }}>
+      <div 
+        className="h-full rounded-full transition-all duration-300"
+        style={{ width: `${percentage}%`, backgroundColor: bgColor }}
+      />
+    </div>
+  )
+}

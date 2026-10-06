@@ -1,0 +1,7 @@
+export { S01HostelRoomManagementPage } from './S01HostelRoomManagementPage'
+export { S02RoomAllocationPage } from './S02RoomAllocationPage'
+export { S03HostelOccupancyDashboardPage } from './S03HostelOccupancyDashboardPage'
+export { S04MyHostelPage } from './S04MyHostelPage'
+export { S05NewHostelRequestPage } from './S05NewHostelRequestPage'
+export { S06MyHostelRequestsPage } from './S06MyHostelRequestsPage'
+export { S07HostelRequestReviewPage } from './S07HostelRequestReviewPage'
