@@ -53,6 +53,10 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'Management', icon: <CheckSquare size={20} />, href: '/admin/hostel/management' },
     { label: 'Room Allocation', icon: <Users size={20} />, href: '/admin/hostel/room-allocation' },
     { label: 'Hostel Requests', icon: <FileText size={20} />, href: '/admin/hostel/requests' },
+    { label: 'ANALYTICS & REPORTS', type: 'group' },
+    { label: 'Reports Hub', icon: <FileText size={20} />, href: '/admin/analytics/reports' },
+    { label: 'Audit Log', icon: <CheckSquare size={20} />, href: '/admin/analytics/audit-logs' },
+    { label: 'Integrity Status', icon: <CheckSquare size={20} />, href: '/admin/analytics/integrity-checks' },
   ]
 
   const facultyNav = [
