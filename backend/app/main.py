@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.errors import APIError, create_error_response
 from app.core.logging import setup_logging
+from app.core.limiter import limiter
 from app.db.engine import engine
 from app.modules.m1_core.routers import router as m1_router
 from app.modules.m2_academics.routers import router as m2_router
@@ -18,6 +21,8 @@ from app.modules.m7_analytics.routers import router as m7_router
 setup_logging()
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Setup
 origins = [origin.strip() for origin in settings.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
@@ -29,6 +34,14 @@ if origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response: Response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 @app.exception_handler(APIError)
 async def api_error_handler(request: Request, exc: APIError):
