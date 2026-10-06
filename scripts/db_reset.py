@@ -125,6 +125,13 @@ def main():
                     run_sql_query(q, db_name, root_pass, sys_env)
                     version_counter += 1
 
+    print("Running db_users_and_grants.py...")
+    user_res = subprocess.run([sys.executable, os.path.join(project_root, 'scripts', 'db_users_and_grants.py')], capture_output=True, text=True, env=sys_env)
+    if user_res.returncode != 0:
+        print("Failed to run db_users_and_grants.py")
+        print(user_res.stderr)
+        sys.exit(1)
+
     print("Database runner completed successfully.")
 
 if __name__ == '__main__':
