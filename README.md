@@ -45,6 +45,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **Database Shell**: `python scripts/db_shell.py` (Windows/macOS/Linux)
 - **Execute SQL**: `python scripts/db_exec.py <file.sql>` (Windows/macOS/Linux)
 
+## Testing
+- **Run All Tests**: `python scripts/test_all.py` (Executes database tests and backend API tests)
+
 ## Folder Map
 - `docs/`: Reference documents (PRD, design, tech decisions).
 - `docs/db/`: Database related documentation.

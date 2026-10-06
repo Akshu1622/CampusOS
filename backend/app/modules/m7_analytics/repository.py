@@ -81,18 +81,24 @@ class AnalyticsRepository:
 
     def get_admin_dashboard(self, db: Session) -> Dict[str, Any]:
         result = db.execute(text("SELECT * FROM vw_admin_dashboard")).mappings().first()
-        return dict(result) if result else {}
+        base = dict(result) if result else {}
+        from app.modules.m7_analytics.dashboard_helpers import enrich_admin_dashboard
+        return enrich_admin_dashboard(db, base)
 
     def get_faculty_dashboard(self, db: Session, faculty_id: int) -> Dict[str, Any]:
         result = db.execute(
             text("CALL sp_faculty_dashboard(:faculty_id)"),
             {"faculty_id": faculty_id}
         ).mappings().first()
-        return dict(result) if result else {}
+        base = dict(result) if result else {}
+        from app.modules.m7_analytics.dashboard_helpers import enrich_faculty_dashboard
+        return enrich_faculty_dashboard(db, base, faculty_id)
 
     def get_student_dashboard(self, db: Session, student_id: int) -> Dict[str, Any]:
         result = db.execute(
             text("CALL sp_student_dashboard(:student_id)"),
             {"student_id": student_id}
         ).mappings().first()
-        return dict(result) if result else {}
+        base = dict(result) if result else {}
+        from app.modules.m7_analytics.dashboard_helpers import enrich_student_dashboard
+        return enrich_student_dashboard(db, base, student_id)
