@@ -32,6 +32,14 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'ATTENDANCE & EXAMS', type: 'group' },
     { label: 'Attendance', icon: <Calendar size={20} />, href: '/admin/attendance' },
     { label: 'Exams', icon: <FileText size={20} />, href: '/admin/exams' },
+    { label: 'FINANCE & FEES', type: 'group' },
+    { label: 'Fee Structures', icon: <CreditCard size={20} />, href: '/admin/finance/fee-structures' },
+    { label: 'Fee Assignment', icon: <CheckSquare size={20} />, href: '/admin/finance/fee-assignment' },
+    { label: 'Late Fee Rules', icon: <FileText size={20} />, href: '/admin/finance/late-fee-rules' },
+    { label: 'Receipt History', icon: <FileText size={20} />, href: '/admin/finance/receipt-history' },
+    { label: 'Payment Ledger', icon: <FileText size={20} />, href: '/admin/finance/ledger' },
+    { label: 'Fee Defaulters', icon: <Users size={20} />, href: '/admin/finance/defaulters' },
+    { label: 'Audit Log', icon: <CheckSquare size={20} />, href: '/admin/finance/audit' },
   ]
 
   const facultyNav = [
@@ -48,6 +56,9 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'My Courses', icon: <BookOpen size={20} />, href: '/student/courses' },
     { label: 'ACADEMICS', type: 'group' },
     { label: 'Attendance', icon: <Calendar size={20} />, href: '/student/attendance' },
+    { label: 'FINANCE', type: 'group' },
+    { label: 'My Fees & Dues', icon: <CreditCard size={20} />, href: '/student/fees' },
+    { label: 'Receipt History', icon: <FileText size={20} />, href: '/student/receipt-history' },
   ]
 
   const navMap = {
