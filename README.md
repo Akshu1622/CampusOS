@@ -12,6 +12,33 @@
 3. Run `python scripts/db_up.py` to start the database container.
 4. Verify the database is running: `python scripts/db_shell.py` should connect successfully.
 
+## Running the Backend (FastAPI)
+
+The backend is built with FastAPI. To run it locally for development, we provide a cross-platform helper script that automatically sets up a Python virtual environment, installs dependencies, and starts the server with hot-reloading.
+
+**Option 1: Using the dev script (Recommended)**
+```bash
+python scripts/dev_backend.py
+```
+
+**Option 2: Manual Setup (Windows)**
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Option 2: Manual Setup (macOS / Linux)**
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
 ## Daily Commands
 - **Start Database**: `python scripts/db_up.py` (Windows/macOS/Linux)
 - **Stop Database**: `python scripts/db_down.py` (Windows/macOS/Linux)
