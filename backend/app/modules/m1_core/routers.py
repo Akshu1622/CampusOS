@@ -13,6 +13,7 @@ from app.modules.m1_core.schemas import (
 )
 from app.modules.m1_core.service import M1Service
 from app.core.security import get_password_hash
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -20,6 +21,7 @@ def get_service(db: Session = Depends(get_db)):
     return M1Service(db)
 
 @router.post("/auth/login", response_model=Token, tags=["Auth"])
+@limiter.limit("20/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), svc: M1Service = Depends(get_service)):
     return svc.perform_login(form_data.username, form_data.password, request.client.host)
 
