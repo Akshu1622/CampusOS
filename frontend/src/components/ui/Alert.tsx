@@ -1,5 +1,5 @@
 import React from 'react'
-import { StatusFamily } from './StatusPill'
+import type { StatusFamily } from './StatusPill'
 import { AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react'
 
 interface AlertProps {

@@ -7,6 +7,14 @@ import { NotFoundPage } from '../features/m1_core/pages/NotFoundPage'
 import { ErrorPage } from '../features/m1_core/pages/ErrorPage'
 import { SessionExpiredPage } from '../features/m1_core/pages/SessionExpiredPage'
 
+import { ProfilePage } from '../features/m1_core/pages/ProfilePage'
+import { UserManagementPage } from '../features/m1_core/pages/UserManagementPage'
+import { RoleManagementPage } from '../features/m1_core/pages/RoleManagementPage'
+import { DepartmentManagementPage } from '../features/m1_core/pages/DepartmentManagementPage'
+import { ProgramManagementPage } from '../features/m1_core/pages/ProgramManagementPage'
+import { TermManagementPage } from '../features/m1_core/pages/TermManagementPage'
+import { StudentMasterPage } from '../features/m1_core/pages/StudentMasterPage'
+
 // Placeholders for dashboards
 const AdminDashboard = () => <div className="p-6"><h1>Admin Dashboard Placeholder</h1></div>
 const FacultyDashboard = () => <div className="p-6"><h1>Faculty Dashboard Placeholder</h1></div>
@@ -36,6 +44,13 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <AdminDashboard /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'users', element: <UserManagementPage /> },
+      { path: 'roles', element: <RoleManagementPage /> },
+      { path: 'departments', element: <DepartmentManagementPage /> },
+      { path: 'programs', element: <ProgramManagementPage /> },
+      { path: 'terms', element: <TermManagementPage /> },
+      { path: 'students', element: <StudentMasterPage /> },
     ],
   },
   {
@@ -48,6 +63,7 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <FacultyDashboard /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
   {
@@ -60,6 +76,7 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <StudentDashboard /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
   {
