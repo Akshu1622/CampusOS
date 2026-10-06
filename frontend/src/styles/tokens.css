@@ -1,0 +1,104 @@
+/* Design Tokens */
+:root {
+  /* Brand and action */
+  --color-primary: #3B4FE0;
+  --color-primary-hover: #2F40C4;
+  --color-primary-active: #2634A6;
+  --color-primary-subtle: #EEF1FE;
+  --color-primary-subtle-border: #D5DBFB;
+  --color-secondary: #0F172A;
+  --color-secondary-soft: #334155;
+  --color-focus-ring: rgba(59, 79, 224, 0.4);
+
+  /* Neutrals */
+  --color-bg: #F6F7FB;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F9FAFC;
+  --color-surface-elevated: #FFFFFF; /* + shadow applied via css class */
+  --color-border: #E6E8F0;
+  --color-border-strong: #D3D7E3;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #8A93A6;
+  --color-text-inverse: #FFFFFF;
+
+  /* Semantic */
+  --color-success: #16A34A;
+  --color-success-bg: #E8F7EE;
+  --color-warning: #D97706;
+  --color-warning-bg: #FEF3E2;
+  --color-error: #DC2626;
+  --color-error-bg: #FDECEC;
+  --color-info: #0EA5E9;
+  --color-info-bg: #E6F5FD;
+  --color-neutral: #64748B;
+  --color-neutral-bg: #EEF1F5;
+
+  /* Icon-chip tints */
+  --color-chip-academic-bg: #E8EEFF;
+  --color-chip-academic-text: #3B4FE0;
+  --color-chip-people-bg: #E5F6EC;
+  --color-chip-people-text: #16A34A;
+  --color-chip-exams-bg: #F0EAFE;
+  --color-chip-exams-text: #7C3AED;
+  --color-chip-finance-bg: #FEF0DC;
+  --color-chip-finance-text: #D97706;
+  --color-chip-alerts-bg: #FDE8EC;
+  --color-chip-alerts-text: #E11D48;
+  --color-chip-hostel-bg: #E0F5F3;
+  --color-chip-hostel-text: #0D9488;
+
+  /* Charts */
+  --chart-1: #3B4FE0;
+  --chart-2: #9DAAF5;
+  --chart-3: #14B8A6;
+  --chart-4: #F59E0B;
+  --chart-5: #F43F5E;
+  --chart-6: #94A3B8;
+
+  /* Typography Scale */
+  --font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.8125rem; /* 13px */
+  --font-size-md: 0.875rem; /* 14px */
+  --font-size-lg: 1rem; /* 16px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+  --font-size-3xl: 1.75rem; /* 28px */
+  --font-size-4xl: 2rem; /* 32px */
+  
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing Scale */
+  --spacing-1: 0.25rem; /* 4px */
+  --spacing-2: 0.5rem;  /* 8px */
+  --spacing-3: 0.75rem; /* 12px */
+  --spacing-4: 1rem;    /* 16px */
+  --spacing-5: 1.25rem; /* 20px */
+  --spacing-6: 1.5rem;  /* 24px */
+  --spacing-8: 2rem;    /* 32px */
+  --spacing-10: 2.5rem; /* 40px */
+  --spacing-12: 3rem;   /* 48px */
+  --spacing-16: 4rem;   /* 64px */
+
+  /* Border Radii */
+  --radius-sm: 0.25rem; /* 4px */
+  --radius-md: 0.5rem;  /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 1rem;    /* 16px */
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-popover: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Heights / Layout */
+  --header-height: 64px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+}
