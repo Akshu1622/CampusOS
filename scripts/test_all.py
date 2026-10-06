@@ -4,6 +4,16 @@ import os
 
 def run_tests():
     print("="*50)
+    print("Resetting Database (db_reset.py)...")
+    print("="*50)
+    db_reset_cmd = [sys.executable, "scripts/db_reset.py"]
+    db_res = subprocess.run(db_reset_cmd)
+    
+    if db_res.returncode != 0:
+        print("\n[!] Database reset failed. Stopping execution.")
+        sys.exit(db_res.returncode)
+
+    print("\n"+"="*50)
     print("Running Database Tests (db_test.py)...")
     print("="*50)
     db_test_cmd = [sys.executable, "scripts/db_test.py"]
