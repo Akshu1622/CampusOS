@@ -8,6 +8,7 @@ from app.core.errors import APIError, create_error_response
 from app.core.logging import setup_logging
 from app.db.engine import engine
 from app.modules.m1_core.routers import router as m1_router
+from app.modules.m2_academics.routers import router as m2_router
 
 setup_logging()
 
@@ -45,3 +46,5 @@ def health_check():
 
 # Include Routers
 app.include_router(m1_router, prefix=settings.API_V1_STR)
+app.include_router(m2_router, prefix=settings.API_V1_STR)
+
