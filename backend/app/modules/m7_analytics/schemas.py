@@ -144,12 +144,26 @@ class AdminDashboardResponse(BaseModel):
     pending_leaves: int
     pending_hostel_requests: int
     students_low_attendance: int
+    
+    # Extended fields
+    blocked_exams_today: int = 0
+    overdue_fees_today: int = 0
+    fee_collection_donut: Dict[str, float] = Field(default_factory=dict)
+    collection_trend: List[Dict[str, Any]] = Field(default_factory=list)
+    enrollment_by_department: List[Dict[str, Any]] = Field(default_factory=list)
 
 class FacultyDashboardResponse(BaseModel):
     assigned_offerings: int
     pending_marks_entry: int
     total_leave_balance: float
     latest_payslip_net: Optional[float] = None
+    
+    # Extended fields
+    sessions_to_mark: int = 0
+    today_sessions: List[Dict[str, Any]] = Field(default_factory=list)
+    attendance_by_offering: List[Dict[str, Any]] = Field(default_factory=list)
+    result_snapshot: List[Dict[str, Any]] = Field(default_factory=list)
+    students_below_75: List[Dict[str, Any]] = Field(default_factory=list)
 
 class StudentDashboardResponse(BaseModel):
     total_enrolled_courses: int
@@ -158,6 +172,12 @@ class StudentDashboardResponse(BaseModel):
     total_outstanding_dues: float
     hostel_status: Optional[str] = None
     pending_exams: int
+    
+    # Extended fields
+    exam_registrations: List[Dict[str, Any]] = Field(default_factory=list)
+    classes_today: List[Dict[str, Any]] = Field(default_factory=list)
+    cgpa_trend: List[Dict[str, Any]] = Field(default_factory=list)
+    upcoming_deadlines: List[Dict[str, Any]] = Field(default_factory=list)
 
 class PaginatedResponse(BaseModel):
     data: List[Any]
