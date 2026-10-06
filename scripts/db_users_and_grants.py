@@ -35,7 +35,7 @@ def main():
 
     -- App Account (DML privileges only)
     DROP USER IF EXISTS 'app'@'%';
-    CREATE USER 'app'@'%' IDENTIFIED BY '{app_pass}';
+    CREATE USER 'app'@'%' IDENTIFIED BY '{app_pass}' WITH MAX_USER_CONNECTIONS 0;
     
     -- Revoke everything first just in case
     REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'app'@'%';
@@ -95,8 +95,8 @@ def main():
     GRANT SELECT, INSERT, UPDATE, DELETE ON {db_name}.hostel_allocation TO 'app'@'%';
     GRANT SELECT, INSERT, UPDATE, DELETE ON {db_name}.hostel_request TO 'app'@'%';
     
-    -- Read-only tables
-    GRANT SELECT ON {db_name}.general_audit_log TO 'app'@'%';
+    -- Read-only tables (plus INSERT for logins)
+    GRANT SELECT, INSERT ON {db_name}.general_audit_log TO 'app'@'%';
     GRANT SELECT ON {db_name}.fee_audit_log TO 'app'@'%';
     GRANT SELECT ON {db_name}.bulk_enrollment_batch TO 'app'@'%';
     GRANT SELECT ON {db_name}.bulk_enrollment_batch_log TO 'app'@'%';

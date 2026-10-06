@@ -10,6 +10,7 @@ from app.db.engine import engine
 from app.modules.m1_core.routers import router as m1_router
 from app.modules.m2_academics.routers import router as m2_router
 from app.modules.m3_attendance_exams.routers import m3_router
+from app.modules.m4_finance.routers import m4_router
 
 setup_logging()
 
@@ -49,4 +50,5 @@ def health_check():
 app.include_router(m1_router, prefix=settings.API_V1_STR)
 app.include_router(m2_router, prefix=settings.API_V1_STR)
 app.include_router(m3_router)
+app.include_router(m4_router, prefix=settings.API_V1_STR)
 

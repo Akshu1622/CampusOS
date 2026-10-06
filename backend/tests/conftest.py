@@ -23,6 +23,11 @@ def admin_token(client):
     return res.json()["access_token"]
 
 @pytest.fixture(scope="session")
+def admin_finance_token(client):
+    res = client.post("/api/v1/auth/login", data={"username": "admin_finance", "password": "password123"})
+    return res.json()["access_token"]
+
+@pytest.fixture(scope="session")
 def student_token(client):
     res = client.post("/api/v1/auth/login", data={"username": "student1", "password": "password123"})
     return res.json()["access_token"]
