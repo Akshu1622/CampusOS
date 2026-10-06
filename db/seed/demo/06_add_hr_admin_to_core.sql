@@ -1,7 +1,7 @@
 -- db/seed/demo/06_add_hr_admin_to_core.sql
 
-INSERT INTO user_account (username, password_hash, status)
-VALUES ('admin_hr', '$argon2id$v=19$m=65536,t=3,p=4$rRVizBmDcI5xrhVCiJGSkg$z3sAf/VapY24rAqnIwu1hOcw1xv8mdKU6AoE6x0ZZa4', 'ACTIVE'); -- 'password123'
+INSERT INTO user_account (username, password_hash, status, employee_id)
+VALUES ('admin_hr', '$argon2id$v=19$m=65536,t=3,p=4$rRVizBmDcI5xrhVCiJGSkg$z3sAf/VapY24rAqnIwu1hOcw1xv8mdKU6AoE6x0ZZa4', 'ACTIVE', 1); -- 'password123'
 
 SET @admin_hr_id = LAST_INSERT_ID();
 
