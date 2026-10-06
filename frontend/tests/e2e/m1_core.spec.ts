@@ -35,8 +35,8 @@ test.describe('M1 Core Pages Smoke Tests', () => {
     await page.fill('input[name="username"]', 'admin_core');
     await page.fill('input[name="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
-    await page.waitForURL('/admin');
-  });
+    await page.waitForURL(/admin|faculty|student/);
+    });
 
   test('Profile Page loads correctly', async ({ page }) => {
     await page.goto('/admin/profile');

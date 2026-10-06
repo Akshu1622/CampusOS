@@ -26,6 +26,18 @@ import {
   FeeDefaultersPage,
   FeeChangeAuditLogPage,
 } from '../features/m4_finance/pages'
+import {
+  EmployeeMasterPage,
+  DesignationManagementPage,
+  LeaveTypePolicyPage,
+  ApplyLeavePage,
+  MyLeavePage,
+  LeaveApprovalsPage,
+  SalaryStructureManagementPage,
+  PayrollRunPage,
+  PayrollRegisterPage,
+  MyPayslipsPage,
+} from '../features/m5_hr/pages'
 
 // Placeholders for dashboards
 const AdminDashboard = () => <div className="p-6"><h1>Admin Dashboard Placeholder</h1></div>
@@ -70,6 +82,13 @@ export const router = createBrowserRouter([
       { path: 'finance/ledger', element: <PaymentLedgerPage /> },
       { path: 'finance/defaulters', element: <FeeDefaultersPage /> },
       { path: 'finance/audit', element: <FeeChangeAuditLogPage /> },
+      { path: 'hr/employees', element: <EmployeeMasterPage /> },
+      { path: 'hr/designations', element: <DesignationManagementPage /> },
+      { path: 'hr/leave-types', element: <LeaveTypePolicyPage /> },
+      { path: 'hr/leave-approvals', element: <LeaveApprovalsPage /> },
+      { path: 'hr/salary-structures', element: <SalaryStructureManagementPage /> },
+      { path: 'hr/payroll-run', element: <PayrollRunPage /> },
+      { path: 'hr/payroll-register', element: <PayrollRegisterPage /> },
     ],
   },
   {
@@ -83,6 +102,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <FacultyDashboard /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'hr/apply-leave', element: <ApplyLeavePage /> },
+      { path: 'hr/my-leave', element: <MyLeavePage /> },
+      { path: 'hr/payslips', element: <MyPayslipsPage /> },
     ],
   },
   {
