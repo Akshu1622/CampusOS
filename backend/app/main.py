@@ -13,6 +13,7 @@ from app.modules.m3_attendance_exams.routers import m3_router
 from app.modules.m4_finance.routers import m4_router
 from app.modules.m5_hr.routers import m5_router
 from app.modules.m6_hostel.routers import router as m6_router
+from app.modules.m7_analytics.routers import router as m7_router
 
 setup_logging()
 
@@ -55,4 +56,5 @@ app.include_router(m3_router)
 app.include_router(m4_router, prefix=settings.API_V1_STR)
 app.include_router(m5_router)
 app.include_router(m6_router)
+app.include_router(m7_router, prefix=settings.API_V1_STR)
 

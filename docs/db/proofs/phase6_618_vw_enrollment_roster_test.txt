@@ -6,9 +6,9 @@
 +-------------+------------+-------------+--------------+-------------+---------+------------+-------------------+----------------+--------------------------------------+---------------------+----------+
 | offering_id | faculty_id | course_code | course_title | term_label  | section | student_id | global_student_id | student_name   | program_name                         | enrollment_date     | status   |
 +-------------+------------+-------------+--------------+-------------+---------+------------+-------------------+----------------+--------------------------------------+---------------------+----------+
-|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |          6 | STU-2023-000006   | Student6 Demo  | Bachelors in Mechanical Engineering  | 2026-10-06 12:56:11 | ENROLLED |
-|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |          7 | STU-2023-000007   | Student7 Demo  | Masters in Computer Science          | 2026-10-06 12:56:11 | ENROLLED |
-|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         22 | STU-2023-000022   | Student22 Demo | Bachelors in Business Administration | 2026-10-06 12:56:12 | ENROLLED |
-|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         29 | STU-2023-000029   | Student29 Demo | Bachelors in Mechanical Engineering  | 2026-10-06 12:56:13 | ENROLLED |
-|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         35 | STU-2023-000035   | Student35 Demo | Masters in Electrical Engineering    | 2026-10-06 12:56:13 | ENROLLED |
+|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |          6 | STU-2023-000006   | Student6 Demo  | Bachelors in Mechanical Engineering  | 2026-10-06 13:09:23 | ENROLLED |
+|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |          7 | STU-2023-000007   | Student7 Demo  | Masters in Computer Science          | 2026-10-06 13:09:23 | ENROLLED |
+|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         22 | STU-2023-000022   | Student22 Demo | Bachelors in Business Administration | 2026-10-06 13:09:24 | ENROLLED |
+|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         29 | STU-2023-000029   | Student29 Demo | Bachelors in Mechanical Engineering  | 2026-10-06 13:09:24 | ENROLLED |
+|          50 |          6 | CS050       | Course 50    | Spring 2024 | A       |         35 | STU-2023-000035   | Student35 Demo | Masters in Electrical Engineering    | 2026-10-06 13:09:25 | ENROLLED |
 +-------------+------------+-------------+--------------+-------------+---------+------------+-------------------+----------------+--------------------------------------+---------------------+----------+
