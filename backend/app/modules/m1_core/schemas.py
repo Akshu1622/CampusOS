@@ -44,11 +44,22 @@ class RoleResponse(BaseModel):
     description: Optional[str] = None
     permission_sets: List[str]
 
+class DepartmentCreateRequest(BaseModel):
+    code: str
+    name: str
+    head: Optional[str] = None
+
 class DepartmentResponse(BaseModel):
     id: int
     dept_code: str
     dept_name: str
     hod_employee_id: Optional[int] = None
+
+class ProgramCreateRequest(BaseModel):
+    name: str
+    department_id: int
+    duration_years: int
+    total_credits: int
 
 class ProgramResponse(BaseModel):
     id: int

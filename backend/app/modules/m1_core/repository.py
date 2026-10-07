@@ -82,7 +82,7 @@ class M1Repository:
         return res or 0
         
     def update_password(self, user_id: int, new_hash: str):
-        self.db.execute(text("UPDATE user_account SET password_hash = :hash, password_changed_at = NOW() WHERE id = :uid"), {"hash": new_hash, "uid": user_id})
+        self.db.execute(text("UPDATE user_account SET password_hash = :hash WHERE id = :uid"), {"hash": new_hash, "uid": user_id})
         self.db.commit()
 
     def get_user_by_id(self, user_id: int):
@@ -107,14 +107,14 @@ class M1Repository:
         return res.lastrowid
         
     def assign_user_role(self, user_id: int, role_name: str):
-        role_q = text("SELECT id FROM role WHERE role_name = :r")
+        role_q = text("SELECT id FROM role WHERE name = :r")
         role_id = self.db.execute(role_q, {"r": role_name}).scalar()
         if role_id:
-            self.db.execute(text("INSERT IGNORE INTO user_role (user_id, role_id) VALUES (:uid, :rid)"), {"uid": user_id, "rid": role_id})
+            self.db.execute(text("INSERT IGNORE INTO role_assignment (user_id, role_id) VALUES (:uid, :rid)"), {"uid": user_id, "rid": role_id})
             self.db.commit()
             
     def clear_user_roles(self, user_id: int):
-        self.db.execute(text("DELETE FROM user_role WHERE user_id = :uid"), {"uid": user_id})
+        self.db.execute(text("DELETE FROM role_assignment WHERE user_id = :uid"), {"uid": user_id})
         self.db.commit()
         
     def update_user_status(self, user_id: int, status: str):
@@ -122,28 +122,36 @@ class M1Repository:
         self.db.commit()
 
     def get_roles(self):
-        query = text("SELECT id, role_name, description FROM role ORDER BY id")
+        query = text("SELECT id, name AS role_name FROM role ORDER BY id")
         roles = self.db.execute(query).fetchall()
         result = []
         for r in roles:
-            p_q = text("SELECT permission_set FROM role_permission WHERE role_id = :rid")
-            perms = [p[0] for p in self.db.execute(p_q, {"rid": r.id}).fetchall()]
             result.append({
                 "id": r.id,
                 "role_name": r.role_name,
-                "description": r.description,
-                "permission_sets": perms
+                "description": None,
+                "permission_sets": []
             })
         return result
 
     def get_departments(self):
-        return self.db.execute(text("SELECT id, dept_code, dept_name, hod_employee_id FROM department ORDER BY dept_code")).fetchall()
+        return self.db.execute(text("SELECT id, code AS dept_code, name AS dept_name, head_employee_id AS hod_employee_id FROM department ORDER BY code")).fetchall()
+
+    def create_department(self, code: str, name: str, head_id: Optional[int]):
+        q = text("INSERT INTO department (code, name, head_employee_id) VALUES (:c, :n, :h)")
+        self.db.execute(q, {"c": code, "n": name, "h": head_id})
+        self.db.commit()
 
     def get_programs(self):
-        return self.db.execute(text("SELECT id, department_id, program_code, program_name, level, duration_semesters FROM program ORDER BY program_code")).fetchall()
+        return self.db.execute(text("SELECT id, department_id, code AS program_code, name AS program_name, 'UG' AS level, duration_years * 2 AS duration_semesters FROM program ORDER BY code")).fetchall()
+
+    def create_program(self, code: str, name: str, dept_id: int, duration: int, credits: int):
+        q = text("INSERT INTO program (code, name, department_id, duration_years, credits_required) VALUES (:c, :n, :d, :dy, :cr)")
+        self.db.execute(q, {"c": code, "n": name, "d": dept_id, "dy": duration, "cr": credits})
+        self.db.commit()
 
     def get_terms(self):
-        return self.db.execute(text("SELECT id, term_name, start_date, end_date, is_current FROM academic_term ORDER BY start_date DESC")).fetchall()
+        return self.db.execute(text("SELECT id, term_label AS term_name, start_date, end_date, is_current FROM academic_term ORDER BY start_date DESC")).fetchall()
 
     def generate_student_id(self, admission_year: int) -> str:
         # Call the DB function

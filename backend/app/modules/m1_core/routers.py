@@ -9,7 +9,8 @@ from app.modules.m1_core.schemas import (
     Token, TokenRefreshRequest, ChangePasswordRequest, ResetPasswordRequest,
     UserStatusUpdate, UserRoleUpdate, UserResponse, UserCreateRequest,
     RoleResponse, DepartmentResponse, ProgramResponse, TermResponse,
-    StudentCreateRequest, StudentResponse, PaginatedUsers, PaginatedStudents
+    StudentCreateRequest, StudentResponse, PaginatedUsers, PaginatedStudents,
+    DepartmentCreateRequest, ProgramCreateRequest
 )
 from app.modules.m1_core.service import M1Service
 from app.core.security import get_password_hash
@@ -102,9 +103,22 @@ def update_user_roles(id: int, req: UserRoleUpdate, request: Request, user: Curr
 def get_departments(svc: M1Service = Depends(get_service)):
     return svc.repo.get_departments()
 
+@router.post("/departments", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
+def create_department(req: DepartmentCreateRequest, svc: M1Service = Depends(get_service)):
+    head_id = int(req.head) if req.head and req.head.isdigit() else None
+    svc.repo.create_department(req.code, req.name, head_id)
+    return {"message": "Department created"}
+
 @router.get("/programs", response_model=List[ProgramResponse], tags=["Catalog"])
 def get_programs(svc: M1Service = Depends(get_service)):
     return svc.repo.get_programs()
+
+@router.post("/programs", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
+def create_program(req: ProgramCreateRequest, svc: M1Service = Depends(get_service)):
+    # Generate code from name, e.g. "B.Tech Computer Science" -> "B.TECH_CO" or just a stripped version
+    code = "".join([c.upper() for c in req.name if c.isalnum() or c.isspace()]).replace(" ", "_")[:10]
+    svc.repo.create_program(code, req.name, req.department_id, req.duration_years, req.total_credits)
+    return {"message": "Program created"}
 
 @router.get("/terms", response_model=List[TermResponse], tags=["Catalog"])
 def get_terms(svc: M1Service = Depends(get_service)):

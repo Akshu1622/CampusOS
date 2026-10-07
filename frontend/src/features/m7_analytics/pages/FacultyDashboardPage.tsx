@@ -31,6 +31,7 @@ export function FacultyDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-text-primary">My Dashboard</h2>
       <div className="bg-primary-50 p-6 rounded-lg shadow-sm border border-primary-100">
         <h1 className="text-2xl font-bold text-primary-900">Welcome back, Professor</h1>
         <p className="text-primary-700 mt-1">
@@ -40,7 +41,7 @@ export function FacultyDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
-          label="Assigned courses"
+          label="Assigned Offerings"
           value={data.assigned_offerings}
           icon={<div className="w-3 h-3 rounded-full bg-blue-500" />}
         />

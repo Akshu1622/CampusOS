@@ -32,6 +32,7 @@ export function StudentDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-text-primary">My Dashboard</h2>
       <div className="bg-primary-50 p-6 rounded-lg shadow-sm border border-primary-100 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-primary-900">Hello, Student</h1>

@@ -130,7 +130,7 @@ class M3Repository:
         q = text("""
             SELECT * FROM vw_attendance_shortage 
             WHERE attendance_pct < :thresh 
-            ORDER BY student_id, offering_id
+            ORDER BY student_id, course_code
             LIMIT :limit OFFSET :skip
         """)
         return self.db.execute(q, {"thresh": threshold, "limit": limit, "skip": skip}).fetchall()

@@ -43,6 +43,14 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
+from fastapi.exceptions import RequestValidationError
+import uuid
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = [{"field": ".".join(map(str, err.get("loc", []))), "msg": err.get("msg", "")} for err in exc.errors()]
+    return create_error_response("VALIDATION_ERROR", "Invalid request parameters", 400, field_errors=errors)
+
 @app.exception_handler(APIError)
 async def api_error_handler(request: Request, exc: APIError):
     return create_error_response(exc.code, exc.message, exc.status_code, exc.field_errors)
@@ -50,8 +58,9 @@ async def api_error_handler(request: Request, exc: APIError):
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     import logging
-    logging.getLogger(__name__).error(f"Unhandled Exception: {exc}", exc_info=True)
-    return create_error_response("INTERNAL_SERVER_ERROR", "An internal server error occurred", 500)
+    req_id = str(uuid.uuid4())
+    logging.getLogger(__name__).error(f"Unhandled Exception [{req_id}]: {exc}", exc_info=True)
+    return create_error_response("INTERNAL_SERVER_ERROR", "An internal server error occurred", 500, req_id=req_id)
 
 @app.get("/health", tags=["System"])
 def health_check():

@@ -55,6 +55,7 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-text-primary">Admin Dashboard</h2>
       <div className="bg-primary-50 p-6 rounded-lg shadow-sm border border-primary-100 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-primary-900">Good morning, Administrator</h1>
@@ -68,7 +69,7 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <StatCard label="Active students" value={data.total_students} icon={<div className="w-3 h-3 rounded-full bg-blue-500" />} />
+        <StatCard label="Total Students" value={data.total_students} icon={<div className="w-3 h-3 rounded-full bg-blue-500" />} />
         <StatCard label="Active enrollments" value={data.active_enrollments} icon={<div className="w-3 h-3 rounded-full bg-violet-500" />} />
         <StatCard label="Fees collected" value={`${collectionPct}%`} trend="vs due" icon={<div className="w-3 h-3 rounded-full bg-amber-500" />} />
         <StatCard label="Hostel beds available" value={data.beds_available} icon={<div className="w-3 h-3 rounded-full bg-teal-500" />} />

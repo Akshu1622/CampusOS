@@ -4,9 +4,28 @@ test.describe('M6 Hostel Smoke Tests', () => {
   // Use admin_core for Admin, student1 for Student
   // Wait for login redirect
   const login = async (page: any, role: 'Admin' | 'Student') => {
+    const mockUser = role === 'Admin'
+      ? { id: 1, username: 'admin_core', roles: ['Admin'], email: 'admin@example.com' }
+      : { id: 3, username: 'student1', roles: ['Student'], email: 'student@example.com' };
+
+    await page.route('**/api/v1/auth/login', async (route: any) => {
+      await route.fulfill({ json: { access_token: 'mocked-token', token_type: 'bearer' } });
+    });
+    await page.route('**/api/v1/me', async (route: any) => {
+      await route.fulfill({ json: mockUser });
+    });
+    await page.route('**/api/v1/hostels**', async (route: any) => {
+      await route.fulfill({ json: [] });
+    });
+    await page.route('**/api/v1/rooms**', async (route: any) => {
+      await route.fulfill({ json: [] });
+    });
+    await page.route('**/api/v1/hostel-requests**', async (route: any) => {
+      await route.fulfill({ json: [] });
+    });
     await page.goto('/login');
     await page.fill('input[name="username"]', role === 'Admin' ? 'admin_core' : 'student1');
-    await page.fill('input[type="password"]', 'password123');
+    await page.fill('input[name="password"]', 'password123');
     await page.click('button:has-text("Sign in")');
     await page.waitForURL(/admin|faculty|student/);
   };

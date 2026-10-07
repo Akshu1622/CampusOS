@@ -84,9 +84,19 @@ All responses are mapped to standard HTTP status codes, and exceptions are forma
 **Roles:** Any Authenticated
 **Response:** `List[DepartmentResponse]`
 
+### `POST /departments`
+**Roles:** ADMIN, SUPERADMIN
+**Request:** `DepartmentCreateRequest`
+**Response:** `{"message": "Department created"}`
+
 ### `GET /programs`
 **Roles:** Any Authenticated
 **Response:** `List[ProgramResponse]`
+
+### `POST /programs`
+**Roles:** ADMIN, SUPERADMIN
+**Request:** `ProgramCreateRequest`
+**Response:** `{"message": "Program created"}`
 
 ### `GET /terms`
 **Roles:** Any Authenticated
