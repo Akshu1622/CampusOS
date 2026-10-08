@@ -8,7 +8,7 @@ from app.dependencies.auth import get_current_user, CurrentUser, require_role, r
 from app.modules.m1_core.schemas import (
     Token, TokenRefreshRequest, ChangePasswordRequest, ResetPasswordRequest,
     UserStatusUpdate, UserRoleUpdate, UserResponse, UserCreateRequest,
-    RoleResponse, DepartmentResponse, ProgramResponse, TermResponse,
+    RoleResponse, DepartmentResponse, ProgramResponse, TermResponse, TermCreateRequest,
     StudentCreateRequest, StudentResponse, PaginatedUsers, PaginatedStudents,
     DepartmentCreateRequest, ProgramCreateRequest
 )
@@ -123,6 +123,11 @@ def create_program(req: ProgramCreateRequest, svc: M1Service = Depends(get_servi
 @router.get("/terms", response_model=List[TermResponse], tags=["Catalog"])
 def get_terms(svc: M1Service = Depends(get_service)):
     return svc.repo.get_terms()
+
+@router.post("/terms", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
+def create_term(req: TermCreateRequest, svc: M1Service = Depends(get_service)):
+    svc.repo.create_term(req.year, req.label, req.start_date, req.end_date, req.is_current)
+    return {"message": "Term created"}
 
 @router.get("/students", response_model=PaginatedStudents, tags=["Students"], dependencies=[Depends(require_role(["ADMIN", "FACULTY", "HR"]))])
 def get_students(page: int = 1, page_size: int = 20, svc: M1Service = Depends(get_service)):

@@ -3,7 +3,7 @@ from sqlalchemy import text
 from typing import Optional, List, Dict, Any
 from app.db.helpers import call_function, call_procedure
 from app.core.security import get_password_hash
-
+from datetime import date
 class M1Repository:
     def __init__(self, db: Session):
         self.db = db
@@ -135,7 +135,7 @@ class M1Repository:
         return result
 
     def get_departments(self):
-        return self.db.execute(text("SELECT id, code AS dept_code, name AS dept_name, head_employee_id AS hod_employee_id FROM department ORDER BY code")).fetchall()
+        return self.db.execute(text("SELECT id, code, name, CAST(head_employee_id AS CHAR) as head FROM department ORDER BY code")).fetchall()
 
     def create_department(self, code: str, name: str, head_id: Optional[int]):
         q = text("INSERT INTO department (code, name, head_employee_id) VALUES (:c, :n, :h)")
@@ -143,7 +143,7 @@ class M1Repository:
         self.db.commit()
 
     def get_programs(self):
-        return self.db.execute(text("SELECT id, department_id, code AS program_code, name AS program_name, 'UG' AS level, duration_years * 2 AS duration_semesters FROM program ORDER BY code")).fetchall()
+        return self.db.execute(text("SELECT id, department_id, code, name, duration_years, credits_required AS total_credits FROM program ORDER BY code")).fetchall()
 
     def create_program(self, code: str, name: str, dept_id: int, duration: int, credits: int):
         q = text("INSERT INTO program (code, name, department_id, duration_years, credits_required) VALUES (:c, :n, :d, :dy, :cr)")
@@ -151,7 +151,16 @@ class M1Repository:
         self.db.commit()
 
     def get_terms(self):
-        return self.db.execute(text("SELECT id, term_label AS term_name, start_date, end_date, is_current FROM academic_term ORDER BY start_date DESC")).fetchall()
+        return self.db.execute(text("SELECT id, term_year AS year, term_label AS label, start_date, end_date, is_current FROM academic_term ORDER BY start_date DESC")).fetchall()
+
+    def create_term(self, year: int, label: str, start_date: date, end_date: date, is_current: bool):
+        identifier = f"{year}-{label}"
+        if is_current:
+            self.db.execute(text("UPDATE academic_term SET is_current = 0"))
+        
+        q = text("INSERT INTO academic_term (term_identifier, term_year, term_label, start_date, end_date, is_current) VALUES (:id, :y, :l, :sd, :ed, :ic)")
+        self.db.execute(q, {"id": identifier, "y": year, "l": label, "sd": start_date, "ed": end_date, "ic": 1 if is_current else 0})
+        self.db.commit()
 
     def generate_student_id(self, admission_year: int) -> str:
         # Call the DB function

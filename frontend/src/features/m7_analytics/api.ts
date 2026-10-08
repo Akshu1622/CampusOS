@@ -18,6 +18,26 @@ export interface AdminDashboardResponse {
   pending_leaves: number
   pending_hostel_requests: number
   students_low_attendance: number
+  blocked_exams_today?: number
+  overdue_fees_today?: number
+  fee_collection_donut?: {
+    paid?: number
+    partial?: number
+    due?: number
+    overdue?: number
+    [key: string]: any
+  }
+  collection_trend?: Array<{
+    month: string
+    current_term?: number
+    previous_term?: number
+    [key: string]: any
+  }>
+  enrollment_by_department?: Array<{
+    department: string
+    count?: number
+    [key: string]: any
+  }>
 }
 
 export interface FacultyDashboardResponse {
@@ -25,6 +45,11 @@ export interface FacultyDashboardResponse {
   pending_marks_entry: number
   total_leave_balance: number
   latest_payslip_net?: number
+  sessions_to_mark?: number
+  today_sessions?: any[]
+  attendance_by_offering?: any[]
+  result_snapshot?: any[]
+  students_below_75?: any[]
 }
 
 export interface StudentDashboardResponse {
@@ -34,6 +59,11 @@ export interface StudentDashboardResponse {
   total_outstanding_dues: number
   hostel_status?: string
   pending_exams: number
+  exam_registrations?: any[]
+  today_schedule?: any[]
+  classes_today?: any[]
+  cgpa_trend?: any[]
+  upcoming_deadlines?: any[]
 }
 
 // Audit Logs

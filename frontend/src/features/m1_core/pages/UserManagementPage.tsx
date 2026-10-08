@@ -59,12 +59,11 @@ export function UserManagementPage() {
     { key: 'username', header: 'User', render: (row: any) => (
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <span style={{ fontWeight: 500 }}>{row.username}</span>
-        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{row.email}</span>
       </div>
     )},
     { key: 'role', header: 'Role', render: (row: any) => (
       <div style={{ padding: '2px 8px', borderRadius: '4px', backgroundColor: 'var(--color-surface-muted)', display: 'inline-block', fontSize: '12px', fontWeight: 500 }}>
-        {row.role}
+        {row.roles?.join(', ') || row.role || 'N/A'}
       </div>
     )},
     { key: 'status', header: 'Status', render: (row: any) => (

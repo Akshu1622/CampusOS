@@ -51,9 +51,11 @@ class DepartmentCreateRequest(BaseModel):
 
 class DepartmentResponse(BaseModel):
     id: int
-    dept_code: str
-    dept_name: str
-    hod_employee_id: Optional[int] = None
+    code: str
+    name: str
+    head: Optional[str] = None
+    programs_count: Optional[int] = 0
+    courses_count: Optional[int] = 0
 
 class ProgramCreateRequest(BaseModel):
     name: str
@@ -64,14 +66,24 @@ class ProgramCreateRequest(BaseModel):
 class ProgramResponse(BaseModel):
     id: int
     department_id: int
-    program_code: str
-    program_name: str
-    level: str
-    duration_semesters: int
+    code: str
+    name: str
+    duration_years: int
+    total_credits: int
+    status: Optional[str] = "ACTIVE"
+    students_count: Optional[int] = 0
+
+class TermCreateRequest(BaseModel):
+    year: int
+    label: str = Field(..., pattern="^(FALL|SPRING|SUMMER|WINTER)$")
+    start_date: date
+    end_date: date
+    is_current: bool = False
 
 class TermResponse(BaseModel):
     id: int
-    term_name: str
+    year: int
+    label: str
     start_date: date
     end_date: date
     is_current: bool

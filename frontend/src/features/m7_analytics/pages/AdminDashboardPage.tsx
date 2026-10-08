@@ -71,7 +71,7 @@ export function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <StatCard label="Total Students" value={data.total_students} icon={<div className="w-3 h-3 rounded-full bg-blue-500" />} />
         <StatCard label="Active enrollments" value={data.active_enrollments} icon={<div className="w-3 h-3 rounded-full bg-violet-500" />} />
-        <StatCard label="Fees collected" value={`${collectionPct}%`} trend="vs due" icon={<div className="w-3 h-3 rounded-full bg-amber-500" />} />
+        <StatCard label="Fees collected" value={`${collectionPct}%`} supportText="vs due" icon={<div className="w-3 h-3 rounded-full bg-amber-500" />} />
         <StatCard label="Hostel beds available" value={data.beds_available} icon={<div className="w-3 h-3 rounded-full bg-teal-500" />} />
         <StatCard label="Below 75% attendance" value={data.students_low_attendance} icon={<div className={`w-3 h-3 rounded-full ${data.students_low_attendance > 50 ? 'bg-red-500' : 'bg-rose-500'}`} />} />
       </div>
@@ -117,7 +117,7 @@ export function AdminDashboardPage() {
                   <Pie data={donutData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                     {donutData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                  <Tooltip formatter={(value: any) => `₹${Number(value || 0).toLocaleString()}`} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -140,7 +140,7 @@ export function AdminDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(val) => `₹${val/1000}k`} />
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString()}`} />
+                <Tooltip formatter={(value: any) => `₹${Number(value || 0).toLocaleString()}`} />
                 <Legend />
                 <Line type="monotone" dataKey="current_term" name="Current Term" stroke="#3B82F6" strokeWidth={2} />
                 <Line type="monotone" dataKey="previous_term" name="Previous Term" stroke="#9CA3AF" strokeWidth={2} strokeDasharray="5 5" />

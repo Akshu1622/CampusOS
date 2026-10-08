@@ -63,7 +63,7 @@ export function StudentMasterPage() {
   }
 
   const columns = [
-    { key: 'id', header: 'ID', render: (row: any) => <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{row.student_id}</span> },
+    { key: 'id', header: 'ID', render: (row: any) => <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{row.global_student_id || row.student_id}</span> },
     { key: 'student', header: 'Student', render: (row: any) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <Avatar name={`${row.first_name} ${row.last_name}`} size="sm" />
@@ -73,7 +73,10 @@ export function StudentMasterPage() {
         </div>
       </div>
     )},
-    { key: 'program', header: 'Program', render: (row: any) => <span style={{ color: 'var(--color-text-secondary)' }}>{row.program?.name || 'N/A'}</span> },
+    { key: 'program', header: 'Program', render: (row: any) => {
+      const prog = programs.find(p => p.id === row.program_id);
+      return <span style={{ color: 'var(--color-text-secondary)' }}>{prog?.name || row.program?.name || 'N/A'}</span>
+    }},
     { key: 'batch', header: 'Batch', render: (row: any) => <span>{row.batch_year}</span> },
     { key: 'status', header: 'Status', render: (row: any) => (
       <StatusPill label={row.status === 'ACTIVE' ? 'Active' : 'Inactive'} status={row.status === 'ACTIVE' ? 'success' : 'neutral'} />
