@@ -14,11 +14,11 @@ def create_employee(data: schemas.EmployeeCreate, db: Session = Depends(get_db),
     return service.create_employee(db, data)
 
 @m5_router.get("/employees", response_model=List[schemas.EmployeeResponse])
-def get_employees(skip: int = 0, limit: int = 100, dept_id: int = None, db: Session = Depends(get_db), _=Depends(require_permission(["HR_Admin"]))):
+def get_employees(skip: int = 0, limit: int = 100, dept_id: int = None, db: Session = Depends(get_db), _=Depends(require_role(["Admin", "Faculty", "Student", "SuperAdmin"]))):
     return service.get_employees(db, skip, limit, dept_id)
 
 @m5_router.get("/employees/{id}", response_model=schemas.EmployeeResponse)
-def get_employee(id: int, db: Session = Depends(get_db), _=Depends(require_permission(["HR_Admin"]))):
+def get_employee(id: int, db: Session = Depends(get_db), _=Depends(require_role(["Admin", "Faculty", "Student", "SuperAdmin"]))):
     return service.get_employee(db, id)
 
 @m5_router.put("/employees/{id}", response_model=schemas.EmployeeResponse)

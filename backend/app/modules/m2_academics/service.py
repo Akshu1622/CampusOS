@@ -30,6 +30,12 @@ class M2Service:
             raise APIError("NOT_FOUND", "Course not found", 404)
         self.repo.update_course(id, data)
 
+    def delete_course(self, id: int):
+        old = self.repo.get_course_by_id(id)
+        if not old:
+            raise APIError("NOT_FOUND", "Course not found", 404)
+        self.repo.delete_course(id)
+
     # --- Curriculum Mapping ---
     def get_curriculum(self, skip: int, limit: int, program_id: int = None, semester: int = None):
         return self.repo.get_curriculum(skip, limit, program_id, semester)
@@ -110,24 +116,38 @@ class M2Service:
         if not term_id:
             raise APIError("NOT_FOUND", "Offering not found", 404)
         if not self.repo.get_term_is_current(term_id):
-            raise APIError("BAD_REQUEST", "Cannot enroll in non-current term", 400)
+            raise APIError("TERM_NOT_OPEN", "The academic term is not open for this operation.", 400)
             
-        # Validation 2: Capacity
+        # Validation 2: Duplicate
+        existing = self.repo.get_enrollment_by_unique(student_id, offering_id)
+        if existing:
+            raise APIError("DUPLICATE_ENROLLMENT", "The student is already enrolled in this course offering.", 409)
+
+        # Validation 3: Capacity
         o = self.repo.get_offering_by_id(offering_id)
         enrolled_count = self.repo.get_enrolled_count(offering_id)
         if enrolled_count >= o.capacity:
-            raise APIError("BAD_REQUEST", "Course offering is full", 400)
-            
-        # Validation 3: Duplicate
-        existing = self.repo.get_enrollment_by_unique(student_id, offering_id)
-        if existing:
-            if existing.status == "ENROLLED":
-                raise APIError("CONFLICT", "Student is already enrolled in this offering", 409)
-            else:
-                raise APIError("CONFLICT", f"Student was previously enrolled and is now {existing.status}", 409)
+            raise APIError("ENROLLMENT_CAPACITY_FULL", "The enrollment capacity for this course offering is full.", 409)
                 
-        # (Database triggers or further logic could check program mapping, PRD says validate program mapping)
-        # We skip explicit program mapping validation for brevity unless required by DB
+        # Validation 4: Student in curriculum
+        prog_id = self.repo.get_student_program(student_id)
+        if prog_id:
+            from sqlalchemy import text
+            has_curriculum = self.repo.db.execute(
+                text("SELECT COUNT(*) FROM curriculum_mapping WHERE program_id = :pid"),
+                {"pid": prog_id}
+            ).scalar()
+            if has_curriculum > 0:
+                is_mapped = self.repo.db.execute(
+                    text("""
+                        SELECT COUNT(*) FROM curriculum_mapping cm
+                        JOIN course_offering co ON cm.course_id = co.course_id
+                        WHERE cm.program_id = :pid AND co.id = :oid
+                    """),
+                    {"pid": prog_id, "oid": offering_id}
+                ).scalar()
+                if not is_mapped:
+                    raise APIError("STUDENT_NOT_IN_CURRICULUM", "The student is not in the required program curriculum for this course.", 400)
         
         eid = self.repo.create_enrollment(data)
         return eid

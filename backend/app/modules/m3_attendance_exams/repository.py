@@ -53,6 +53,15 @@ class M3Repository:
         self.db.commit()
 
     # --- Attendance ---
+    def count_attendance_sessions(self, offering_id: int = None) -> int:
+        if offering_id:
+            q = text("SELECT COUNT(*) FROM attendance_session WHERE offering_id = :oid")
+            params = {"oid": offering_id}
+        else:
+            q = text("SELECT COUNT(*) FROM attendance_session")
+            params = {}
+        return self.db.execute(q, params).scalar() or 0
+
     def get_attendance_sessions(self, skip: int, limit: int, offering_id: int = None) -> List[Any]:
         if offering_id:
             q = text("SELECT * FROM attendance_session WHERE offering_id = :oid ORDER BY session_date DESC, slot ASC LIMIT :limit OFFSET :skip")
@@ -61,6 +70,13 @@ class M3Repository:
             q = text("SELECT * FROM attendance_session ORDER BY session_date DESC, slot ASC LIMIT :limit OFFSET :skip")
             params = {"limit": limit, "skip": skip}
         return self.db.execute(q, params).fetchall()
+
+    def count_attendance_shortage(self, threshold: float = 75.0) -> int:
+        try:
+            q = text("SELECT COUNT(*) FROM vw_attendance_shortage WHERE attendance_pct < :thresh")
+            return self.db.execute(q, {"thresh": threshold}).scalar() or 0
+        except Exception:
+            return 0
 
     def get_attendance_session_by_id(self, id: int) -> Optional[Any]:
         q = text("SELECT * FROM attendance_session WHERE id = :id")

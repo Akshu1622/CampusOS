@@ -104,12 +104,20 @@ class BulkEnrollmentRequest(BaseModel):
     payload: List[dict] # Will contain student_id and offering_id
 
 
+class BulkEnrollmentRowResult(BaseModel):
+    student_id: Optional[int] = None
+    offering_id: Optional[int] = None
+    status: str
+    message: Optional[str] = None
+
 class BulkEnrollmentResponse(BaseModel):
     batch_id: str
     total_processed: int
     total_success: int
     total_failed: int
+    total_skipped: Optional[int] = 0
     message: str
+    row_results: Optional[List[BulkEnrollmentRowResult]] = None
     
 # --- Role Views ---
 class MyCourseResponse(BaseModel):

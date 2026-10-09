@@ -3,7 +3,8 @@ import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import {
   Search, Bell, Menu, LayoutDashboard, Users, BookOpen, GraduationCap,
-  Calendar, FileText, CreditCard, Clock, CheckSquare, XCircle, ChevronDown, LogOut
+  Calendar, FileText, CreditCard, Clock, CheckSquare, XCircle, ChevronDown, LogOut,
+  Award, TrendingUp
 } from 'lucide-react'
 import { Avatar, Dropdown } from '@/components/ui'
 
@@ -27,11 +28,21 @@ export function AppShell({ role }: AppShellProps) {
     { label: 'Programs', icon: <GraduationCap size={20} />, href: '/admin/programs' },
     { label: 'Terms', icon: <Calendar size={20} />, href: '/admin/terms' },
     { label: 'Students', icon: <Users size={20} />, href: '/admin/students' },
-    // { label: 'ACADEMICS', type: 'group' },
-    // { label: 'Courses', icon: <BookOpen size={20} />, href: '/admin/courses' },
-    // { label: 'ATTENDANCE & EXAMS', type: 'group' },
-    // { label: 'Attendance', icon: <Calendar size={20} />, href: '/admin/attendance' },
-    // { label: 'Exams', icon: <FileText size={20} />, href: '/admin/exams' },
+    { label: 'ACADEMICS', type: 'group' },
+    { label: 'Course Catalog', icon: <BookOpen size={20} />, href: '/admin/academics/courses' },
+    { label: 'Curriculum Mapping', icon: <FileText size={20} />, href: '/admin/academics/curriculum' },
+    { label: 'Course Offerings', icon: <Calendar size={20} />, href: '/admin/academics/offerings' },
+    { label: 'Individual Enrollment', icon: <Users size={20} />, href: '/admin/academics/enrollment/individual' },
+    { label: 'Bulk Enrollment', icon: <CheckSquare size={20} />, href: '/admin/academics/enrollment/bulk' },
+    { label: 'Enrollment Records', icon: <FileText size={20} />, href: '/admin/academics/enrollment/records' },
+    { label: 'ATTENDANCE & EXAMS', type: 'group' },
+    { label: 'Attendance Sessions', icon: <Calendar size={20} />, href: '/admin/attendance/sessions' },
+    { label: 'Attendance Shortage', icon: <Users size={20} />, href: '/admin/attendance/shortage' },
+    { label: 'Exam Management', icon: <FileText size={20} />, href: '/admin/exams/management' },
+    { label: 'Exam Registrations', icon: <CheckSquare size={20} />, href: '/admin/exams/registrations' },
+    { label: 'Process & Publish', icon: <Award size={20} />, href: '/admin/exams/results/process' },
+    { label: 'Course Summary', icon: <TrendingUp size={20} />, href: '/admin/exams/results/summary' },
+    { label: 'Grade Scale Config', icon: <CheckSquare size={20} />, href: '/admin/exams/grade-scale' },
     { label: 'FINANCE & FEES', type: 'group' },
     { label: 'Fee Structures', icon: <CreditCard size={20} />, href: '/admin/finance/fee-structures' },
     { label: 'Fee Assignment', icon: <CheckSquare size={20} />, href: '/admin/finance/fee-assignment' },
@@ -62,9 +73,13 @@ export function AppShell({ role }: AppShellProps) {
   const facultyNav = [
     { label: 'MAIN MENU', type: 'group' },
     { label: 'Dashboard', icon: <LayoutDashboard size={20} />, href: '/faculty' },
-    // { label: 'My Courses', icon: <BookOpen size={20} />, href: '/faculty/courses' },
-    // { label: 'TEACHING', type: 'group' },
-    // { label: 'Attendance', icon: <Calendar size={20} />, href: '/faculty/attendance' },
+    { label: 'My Teaching', icon: <BookOpen size={20} />, href: '/faculty/teaching' },
+    { label: 'TEACHING', type: 'group' },
+    { label: 'Mark Attendance', icon: <Calendar size={20} />, href: '/faculty/attendance' },
+    { label: 'Attendance History', icon: <FileText size={20} />, href: '/faculty/attendance/history' },
+    { label: 'Attendance Shortage', icon: <Users size={20} />, href: '/faculty/attendance/shortage' },
+    { label: 'Marks Entry', icon: <CheckSquare size={20} />, href: '/faculty/marks' },
+    { label: 'Course Summary', icon: <TrendingUp size={20} />, href: '/faculty/results/summary' },
     { label: 'HR & LEAVE', type: 'group' },
     { label: 'Apply Leave', icon: <Calendar size={20} />, href: '/faculty/hr/apply-leave' },
     { label: 'My Leave', icon: <FileText size={20} />, href: '/faculty/hr/my-leave' },
@@ -74,9 +89,11 @@ export function AppShell({ role }: AppShellProps) {
   const studentNav = [
     { label: 'MAIN MENU', type: 'group' },
     { label: 'Dashboard', icon: <LayoutDashboard size={20} />, href: '/student' },
-    // { label: 'My Courses', icon: <BookOpen size={20} />, href: '/student/courses' },
-    // { label: 'ACADEMICS', type: 'group' },
-    // { label: 'Attendance', icon: <Calendar size={20} />, href: '/student/attendance' },
+    { label: 'My Courses', icon: <BookOpen size={20} />, href: '/student/courses' },
+    { label: 'ACADEMICS', type: 'group' },
+    { label: 'My Attendance', icon: <Calendar size={20} />, href: '/student/attendance' },
+    { label: 'Exam Registration', icon: <CheckSquare size={20} />, href: '/student/exams/registration' },
+    { label: 'My Results & CGPA', icon: <Award size={20} />, href: '/student/results' },
     { label: 'FINANCE', type: 'group' },
     { label: 'My Fees & Dues', icon: <CreditCard size={20} />, href: '/student/fees' },
     { label: 'Receipt History', icon: <FileText size={20} />, href: '/student/receipt-history' },

@@ -22,7 +22,7 @@ def create_hostel(data: schemas.HostelCreate, db: Session = Depends(get_db), use
     return service.create_hostel(db, data)
 
 @router.get("/hostels", response_model=List[schemas.HostelResponse])
-def get_hostels(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: CurrentUser = Depends(hostel_admin)):
+def get_hostels(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: CurrentUser = student_or_admin):
     return service.get_hostels(db, skip, limit)
 
 @router.get("/hostels/occupancy", response_model=List[schemas.HostelOccupancyResponse])
@@ -30,7 +30,7 @@ def get_hostels_occupancy(db: Session = Depends(get_db), user: CurrentUser = Dep
     return service.get_occupancy(db)
 
 @router.get("/hostels/{hostel_id}", response_model=schemas.HostelResponse)
-def get_hostel(hostel_id: int, db: Session = Depends(get_db), user: CurrentUser = Depends(hostel_admin)):
+def get_hostel(hostel_id: int, db: Session = Depends(get_db), user: CurrentUser = student_or_admin):
     return service.get_hostel(db, hostel_id)
 
 @router.put("/hostels/{hostel_id}", response_model=schemas.HostelResponse)
@@ -47,7 +47,7 @@ def create_room(data: schemas.RoomCreate, db: Session = Depends(get_db), user: C
     return service.create_room(db, data)
 
 @router.get("/rooms", response_model=List[schemas.RoomResponse])
-def get_rooms(hostel_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: CurrentUser = Depends(hostel_admin)):
+def get_rooms(hostel_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: CurrentUser = student_or_admin):
     return service.get_rooms(db, hostel_id, skip, limit)
 
 @router.get("/rooms/{room_id}", response_model=schemas.RoomResponse)

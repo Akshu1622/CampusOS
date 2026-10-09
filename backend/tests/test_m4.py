@@ -4,10 +4,17 @@ import random
 from datetime import date, timedelta
 
 def test_m4_fee_workflow(client, admin_finance_token, student_token):
+    # Ensure no collision on UK_prog_term (program_id, term_id)
+    res_list = client.get("/api/v1/fee-structures", headers={"Authorization": f"Bearer {admin_finance_token}"})
+    if res_list.status_code == 200:
+        for item in res_list.json().get("items", []):
+            if item.get("program_id") == 2 and item.get("term_id") == 2:
+                client.delete(f"/api/v1/fee-structures/{item['id']}", headers={"Authorization": f"Bearer {admin_finance_token}"})
+
     # 1. Create Fee Structure
     name = f"Term Fee {random.randint(1000, 9999)}"
     res_fs = client.post("/api/v1/fee-structures", json={
-        "program_id": random.randint(3, 10),
+        "program_id": 2,
         "term_id": 2,
         "structure_name": name,
         "components": [

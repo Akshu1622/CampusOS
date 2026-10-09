@@ -111,9 +111,20 @@ def get_departments(svc: M1Service = Depends(get_service)):
 
 @router.post("/departments", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_department(req: DepartmentCreateRequest, svc: M1Service = Depends(get_service)):
+    code_clean = req.code.strip().upper()
+    if len(code_clean) > 10:
+        raise APIError("INVALID_CODE", "Department code must be at most 10 characters", status_code=status.HTTP_400_BAD_REQUEST)
+    head_id = None
+    if req.head and req.head.strip():
+        head_str = req.head.strip()
+        if head_str.isdigit():
+            head_id = svc.db.execute(text("SELECT id FROM employee WHERE id = :id"), {"id": int(head_str)}).scalar()
+        if not head_id:
+            head_id = svc.db.execute(text("SELECT id FROM employee WHERE employee_id = :eid"), {"eid": head_str}).scalar()
+        if not head_id:
+            raise APIError("EMPLOYEE_NOT_FOUND", f"Employee '{head_str}' not found", status_code=status.HTTP_404_NOT_FOUND)
     try:
-        head_id = int(req.head) if req.head and req.head.isdigit() else None
-        svc.repo.create_department(req.code.upper(), req.name, head_id)
+        svc.repo.create_department(code_clean, req.name.strip(), head_id)
         return {"message": "Department created"}
     except Exception as e:
         if "Duplicate entry" in str(e) or "UK_department_code" in str(e):
@@ -141,6 +152,8 @@ def get_terms(svc: M1Service = Depends(get_service)):
 
 @router.post("/terms", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_term(req: TermCreateRequest, svc: M1Service = Depends(get_service)):
+    if req.end_date <= req.start_date:
+        raise APIError("INVALID_DATES", "Term end date must be after start date", status_code=status.HTTP_400_BAD_REQUEST)
     try:
         svc.repo.create_term(req.year, req.label, req.start_date, req.end_date, req.is_current)
         return {"message": "Term created"}

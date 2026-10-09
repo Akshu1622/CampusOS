@@ -37,12 +37,24 @@ def update_course(id: int, req: CourseUpdateRequest, request: Request, user: Cur
     svc.update_course(id, req.model_dump(), user.user_id, request.client.host)
     return svc.get_course(id)
 
+@router.get("/courses/{id}", response_model=CourseResponse, tags=["Courses"], dependencies=[Depends(require_role(["Admin", "Faculty", "Student"]))])
+def get_course(id: int, svc: M2Service = Depends(get_service)):
+    return svc.get_course(id)
+
+@router.delete("/courses/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Courses"], dependencies=[Depends(require_permission(["Academics_Admin"]))])
+def delete_course(id: int, svc: M2Service = Depends(get_service)):
+    svc.delete_course(id)
+
 # --- Curriculum Mapping ---
 @router.get("/curriculum", response_model=PaginatedCurriculum, tags=["Curriculum"], dependencies=[Depends(require_role(["Admin", "Faculty", "Student"]))])
 def get_curriculum(page: int = 1, page_size: int = 20, program_id: Optional[int] = None, semester: Optional[int] = None, svc: M2Service = Depends(get_service)):
     rows, total = svc.get_curriculum((page-1)*page_size, page_size, program_id, semester)
     items = [CurriculumResponse(**dict(r._mapping)) for r in rows]
     return PaginatedCurriculum(items=items, total=total, page=page, page_size=page_size)
+
+@router.get("/curriculum/{id}", response_model=CurriculumResponse, tags=["Curriculum"], dependencies=[Depends(require_role(["Admin", "Faculty", "Student"]))])
+def get_curriculum_by_id(id: int, svc: M2Service = Depends(get_service)):
+    return svc.get_curriculum_by_id(id)
 
 @router.post("/curriculum", response_model=CurriculumResponse, status_code=status.HTTP_201_CREATED, tags=["Curriculum"], dependencies=[Depends(require_permission(["Academics_Admin"]))])
 def create_curriculum(req: CurriculumCreateRequest, request: Request, user: CurrentUser = Depends(get_current_user), svc: M2Service = Depends(get_service)):
@@ -65,6 +77,10 @@ def get_offerings(page: int = 1, page_size: int = 20, term_id: Optional[int] = N
     items = [OfferingResponse(**dict(r._mapping)) for r in rows]
     return PaginatedOfferings(items=items, total=total, page=page, page_size=page_size)
 
+@router.get("/offerings/{id}", response_model=OfferingResponse, tags=["Offerings"], dependencies=[Depends(require_role(["Admin", "Faculty", "Student"]))])
+def get_offering(id: int, svc: M2Service = Depends(get_service)):
+    return svc.get_offering(id)
+
 @router.post("/offerings", response_model=OfferingResponse, status_code=status.HTTP_201_CREATED, tags=["Offerings"], dependencies=[Depends(require_permission(["Academics_Admin"]))])
 def create_offering(req: OfferingCreateRequest, request: Request, user: CurrentUser = Depends(get_current_user), svc: M2Service = Depends(get_service)):
     oid = svc.create_offering(req.model_dump(), user.user_id, request.client.host)
@@ -85,6 +101,10 @@ def get_enrollments(page: int = 1, page_size: int = 20, student_id: Optional[int
     rows, total = svc.get_enrollments((page-1)*page_size, page_size, student_id, offering_id)
     items = [EnrollmentResponse(**dict(r._mapping)) for r in rows]
     return PaginatedEnrollments(items=items, total=total, page=page, page_size=page_size)
+
+@router.get("/enrollments/{id}", response_model=EnrollmentResponse, tags=["Enrollments"], dependencies=[Depends(require_role(["Admin"]))])
+def get_enrollment(id: int, svc: M2Service = Depends(get_service)):
+    return svc.get_enrollment(id)
 
 @router.post("/enrollments", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED, tags=["Enrollments"], dependencies=[Depends(require_permission(["Academics_Admin"]))])
 def create_enrollment(req: EnrollmentCreateRequest, request: Request, user: CurrentUser = Depends(get_current_user), svc: M2Service = Depends(get_service)):
