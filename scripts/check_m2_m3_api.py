@@ -32,7 +32,7 @@ def api_call(path, method="GET", token=None, body=None):
         data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, timeout=10) as res:
             raw = res.read().decode("utf-8")
             return res.status, json.loads(raw) if raw else None
     except urllib.error.HTTPError as e:
@@ -44,14 +44,14 @@ def api_call(path, method="GET", token=None, body=None):
         return e.code, parsed
 
 def main():
-    print("Authenticating test accounts...")
+    print("Authenticating test accounts...", flush=True)
     tokens = {
         "admin": login("admin_core"),
         "faculty": login("faculty1"),
         "student": login("student1"),
         "student_low_att": login("student3") # 50% attendance
     }
-    print("Authentication successful.\n")
+    print("Authentication successful.\n", flush=True)
 
     results = []
 
@@ -59,6 +59,7 @@ def main():
         token = tokens.get(role)
         status, resp = api_call(endpoint, method=method, token=token, body=body)
         passed = (status == expected_status)
+        print(f"  {method:<6} {endpoint:<30} -> {status} (exp {expected_status}) {'OK' if passed else 'FAIL'}", flush=True)
         results.append({
             "endpoint": f"{method} {endpoint}",
             "role": role,

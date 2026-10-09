@@ -176,6 +176,35 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
 
 ---
 
-## Step 6. Final Regression & Merge
-- **Status:** PENDING
-- Full test suites, README update, merge to `main`.
+## Step 6. Final Regression & Merge (Completed)
+- **Status:** COMPLETED
+- **Database System Verification (`python scripts/db_verify.py`):**
+  - All 9 verification steps passed cleanly:
+    1. `db_reset`: PASS
+    2. `verify_seed`: PASS (30/30 deterministic checks)
+    3. `db_backup`: PASS
+    4. `db_restore`: PASS
+    5. `db_test --proofs`: PASS (all unit tests, stored procedure tests, concurrency tests, schema conformance)
+    6. `test_privileges`: PASS (enforced read/write segregation on `app` user)
+    7. `gen_data_dictionary`: PASS (`docs/db/DATA_DICTIONARY.md` updated)
+    8. `gen_db_contract`: PASS (`docs/db/DB_CONTRACT.md` updated)
+    9. `contract_check`: PASS (100% exact match to live information schema)
+- **Backend Test Suite (`pytest tests/`):**
+  - 38/38 tests passing across all 7 modules (M1..M7 and security).
+  - Normalized concurrency cleanup in `db/tests/test_concurrency_phase5.py` to ensure `academic_term` remains in active state for Term 2 (`2024-SPRING`).
+  - Added deterministic cleanup and program allocation in `backend/tests/test_m4.py` to prevent duplicate fee structure constraint conflicts.
+- **Frontend Unit Tests (`npm test -- --run`):**
+  - 18/18 tests passing across 5 test suites (attendance math, marks validation, bulk enrollment CSV parser, UI Button, Reports Hub).
+- **Frontend E2E Tests (`npx playwright test`):**
+  - 20/20 tests passing for M2 Academics & Enrollment (A-01..A-08) and M3 Attendance & Exams (E-01..E-12).
+- **TypeScript Production Build (`npm run build`):**
+  - Clean build with 0 errors (`2739 modules transformed`).
+- **API Smoke & Validation Suites:**
+  - `python scripts/smoke_test.py`: 42/42 endpoints verified with 0 errors.
+  - `python scripts/check_backend_sql.py`: 207/207 SQL statements verified against live MySQL schema.
+  - `python scripts/check_m2_m3_api.py`: 57/57 endpoints verified with exact HTTP status codes and domain error codes.
+- **Documentation:**
+  - Enriched `README.md` with complete module architecture, setup instructions, credential tables, and test commands.
+- **Merge to Main:**
+  - Merged branch `repair/m2-m3-frontend` into `main` with `--no-ff`.
+

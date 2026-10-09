@@ -116,13 +116,7 @@ def register_exam(data: ExamRegistrationCreate, svc: M3Service = Depends(get_m3_
     return dict(row._mapping) if row else None
 
 @m3_router.get("/exam-registrations", response_model=PaginatedResponse)
-def get_exam_registrations(page: int = 1, page_size: int = 20, exam_id: int = None, student_id: int = None, svc: M3Service = Depends(get_m3_service), user: CurrentUser = Depends(get_current_user)):
-    has_admin = "Exams_Admin" in user.permission_sets or any(r.lower() in ["admin", "superadmin"] for r in user.roles)
-    if not has_admin:
-        current_sid = svc.db.execute(text("SELECT student_id FROM user_account WHERE id = :uid"), {"uid": user.user_id}).scalar()
-        if not current_sid:
-            raise APIError("FORBIDDEN", "Insufficient permissions", status_code=status.HTTP_403_FORBIDDEN)
-        student_id = current_sid
+def get_exam_registrations(page: int = 1, page_size: int = 20, exam_id: int = None, student_id: int = None, svc: M3Service = Depends(get_m3_service), _=Depends(require_permission(["Exams_Admin"]))):
     items = svc.get_exam_registrations((page - 1) * page_size, page_size, exam_id, student_id)
     return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}
 

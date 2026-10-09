@@ -122,6 +122,10 @@ def test_enrollment_capacity():
     t2.join()
 
     assert sum(results) == 1, f"Expected exactly 1 success, got {sum(results)}"
+    run_query("DELETE FROM enrollment WHERE offering_id = 99")
+    run_query("DELETE FROM course_offering WHERE id = 99")
+    run_query("UPDATE academic_term SET is_current = 0 WHERE id = 1")
+    run_query("UPDATE academic_term SET is_current = 1 WHERE id = 2")
     print("[PASS] Enrollment Capacity")
 
 if __name__ == '__main__':
