@@ -35,7 +35,9 @@ class M3Service:
 
     # --- Attendance ---
     def get_attendance_sessions(self, skip: int, limit: int, offering_id: int = None):
-        return self.repo.get_attendance_sessions(skip, limit, offering_id)
+        rows = self.repo.get_attendance_sessions(skip, limit, offering_id)
+        total = self.repo.count_attendance_sessions(offering_id)
+        return rows, total
 
     def mark_attendance(self, data: dict, acting_user: int, has_admin_override: bool):
         offering_id = data["offering_id"]
@@ -93,10 +95,11 @@ class M3Service:
 
     def get_attendance_shortage(self, skip: int, limit: int):
         try:
-            return self.repo.get_attendance_shortage(skip, limit)
+            rows = self.repo.get_attendance_shortage(skip, limit)
+            total = self.repo.count_attendance_shortage()
+            return rows, total
         except Exception:
-            # Fallback if view doesn't exist yet
-            return []
+            return [], 0
 
     # --- Exams ---
     def get_exams(self, skip: int, limit: int, offering_id: int = None):
@@ -120,7 +123,11 @@ class M3Service:
 
     def delete_exam(self, id: int):
         self.get_exam(id)
-        self.repo.delete_exam(id)
+        try:
+            self.repo.delete_exam(id)
+        except Exception as e:
+            from app.db.helpers import handle_db_error
+            handle_db_error(e)
 
     # --- Exam Registration ---
     def get_exam_registration(self, exam_id: int, user_id: int):
@@ -136,15 +143,13 @@ class M3Service:
         e = self.get_exam(exam_id)
         # Check duplicate
         if self.repo.get_exam_registration(exam_id, student_id):
-            raise APIError("CONFLICT", "Already registered", 409)
+            raise APIError("EXAM_DUPLICATE_REGISTRATION", "The student is already registered for this exam.", 409)
 
         try:
             return self.repo.create_exam_registration(exam_id, student_id)
-        except DBAPIError as err:
-            orig = str(err.orig)
-            if "45000" in orig or "attendance" in orig.lower():
-                raise APIError("BAD_REQUEST", "Exam registration rejected by database rule (e.g., attendance < 75%)", 400)
-            raise APIError("BAD_REQUEST", f"Registration failed: {orig}", 400)
+        except Exception as err:
+            from app.db.helpers import handle_db_error
+            handle_db_error(err)
 
     # --- Marks Entry & Results ---
     def enter_marks(self, exam_id: int, marks_data: list, acting_user: int, has_admin_override: bool):
@@ -155,7 +160,12 @@ class M3Service:
             
         for m in marks_data:
             if m["marks"] > exam.max_marks:
-                raise APIError("BAD_REQUEST", f"Marks cannot exceed maximum {exam.max_marks}", 400)
+                raise APIError("MARKS_OUT_OF_BOUNDS", f"Marks cannot exceed maximum {exam.max_marks}", 400)
+            if m["marks"] < 0:
+                raise APIError("MARKS_OUT_OF_BOUNDS", "Marks cannot be negative", 400)
+            existing_mark = self.repo.get_mark_by_registration(m["registration_id"])
+            if existing_mark and existing_mark.is_published:
+                raise APIError("RESULT_ALREADY_PUBLISHED", "The result for this exam is already published and cannot be modified.", 409)
 
         self.repo.upsert_marks(marks_data)
 
@@ -171,6 +181,9 @@ class M3Service:
 
     def publish_results(self, exam_id: int):
         self.get_exam(exam_id)
+        marks = self.repo.get_marks_for_exam(exam_id)
+        if marks and all(m.is_published for m in marks):
+            raise APIError("RESULT_ALREADY_PUBLISHED", "The result for this exam is already published and cannot be modified.", 409)
         self.repo.publish_results(exam_id)
 
     def get_my_results(self, user_id: int):

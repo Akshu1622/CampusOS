@@ -36,6 +36,9 @@ class M2Repository:
         q = text(f"UPDATE course SET {updates_str} WHERE id = :id")
         data["id"] = id
         self.db.execute(q, data)
+    def delete_course(self, id: int):
+        q = text("DELETE FROM course WHERE id = :id")
+        self.db.execute(q, {"id": id})
         self.db.commit()
 
     def get_courses(self, skip: int, limit: int, department_id: Optional[int] = None) -> Tuple[List[Any], int]:
@@ -258,36 +261,55 @@ class M2Repository:
 
     # --- Bulk Enrollment ---
     def call_bulk_enrollment(self, payload: str, policy: str, dry_run: bool, acting_user: int) -> dict:
-        import json
-        q = text("CALL sp_bulk_enrollment(:payload, :policy, :dry_run, :acting_user)")
+        raw_conn = self.db.connection().connection
+        cursor = raw_conn.cursor()
         try:
-            self.db.execute(q, {
-                "payload": payload,
-                "policy": policy,
-                "dry_run": 1 if dry_run else 0,
-                "acting_user": acting_user
-            })
-            self.db.commit()
-            
-            # The SP might write to bulk_enrollment_batch, so we can fetch the latest for this user
+            cursor.execute("CALL sp_bulk_enrollment(%s, %s, %s, %s)", (payload, policy, 1 if dry_run else 0, acting_user))
+            summary = cursor.fetchone()
+            if isinstance(summary, (list, tuple)):
+                tot_p, tot_s, tot_f, tot_sk = summary[0], summary[1], summary[2], summary[3]
+            elif isinstance(summary, dict):
+                tot_p = summary.get("total_processed", 0)
+                tot_s = summary.get("total_success", 0)
+                tot_f = summary.get("total_failed", 0)
+                tot_sk = summary.get("total_skipped", 0)
+            else:
+                tot_p, tot_s, tot_f, tot_sk = 0, 0, 0, 0
+
+            row_results = []
+            if cursor.nextset():
+                rows = cursor.fetchall()
+                for r in rows:
+                    if isinstance(r, (list, tuple)):
+                        row_results.append({
+                            "student_id": r[0],
+                            "offering_id": r[1],
+                            "status": r[2],
+                            "message": r[3]
+                        })
+                    elif isinstance(r, dict):
+                        row_results.append(r)
+
+            raw_conn.commit()
+
+            batch_id = "DRY-RUN"
             if not dry_run:
-                latest_q = text("SELECT batch_id, total_processed, total_success, total_failed FROM bulk_enrollment_batch WHERE run_by = :uid ORDER BY id DESC LIMIT 1")
-                batch_res = self.db.execute(latest_q, {"uid": acting_user}).fetchone()
-                if batch_res:
-                    return {
-                        "batch_id": batch_res.batch_id,
-                        "total_processed": batch_res.total_processed,
-                        "total_success": batch_res.total_success,
-                        "total_failed": batch_res.total_failed,
-                        "message": "Bulk enrollment completed"
-                    }
+                latest_q = text("SELECT batch_id FROM bulk_enrollment_batch WHERE run_by = :uid ORDER BY id DESC LIMIT 1")
+                b_res = self.db.execute(latest_q, {"uid": acting_user}).fetchone()
+                if b_res:
+                    batch_id = b_res[0]
+
             return {
-                "batch_id": "DRY-RUN",
-                "total_processed": 0,
-                "total_success": 0,
-                "total_failed": 0,
-                "message": "Dry run completed or SP executed successfully"
+                "batch_id": batch_id,
+                "total_processed": int(tot_p or 0),
+                "total_success": int(tot_s or 0),
+                "total_failed": int(tot_f or 0),
+                "total_skipped": int(tot_sk or 0),
+                "message": "Bulk enrollment completed" if not dry_run else "Validation dry-run completed",
+                "row_results": row_results
             }
         except Exception as e:
-            self.db.rollback()
+            raw_conn.rollback()
             raise e
+        finally:
+            cursor.close()

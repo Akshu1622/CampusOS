@@ -61,8 +61,19 @@ def update_attendance_session(id: int, data: AttendanceSessionUpdate, svc: M3Ser
 
 @m3_router.get("/attendance/sessions", response_model=PaginatedResponse)
 def get_attendance_sessions(page: int = 1, page_size: int = 20, offering_id: int = None, svc: M3Service = Depends(get_m3_service), _=Depends(require_role(["Faculty", "Admin"]))):
-    items = svc.get_attendance_sessions((page - 1) * page_size, page_size, offering_id)
-    return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}
+    items, total = svc.get_attendance_sessions((page - 1) * page_size, page_size, offering_id)
+    return {"items": [dict(i._mapping) for i in items], "total": total, "page": page, "page_size": page_size}
+
+@m3_router.get("/attendance/sessions/{id}")
+def get_attendance_session(id: int, svc: M3Service = Depends(get_m3_service), user: CurrentUser = Depends(require_role(["Faculty", "Admin"]))):
+    sess = svc.repo.get_attendance_session_by_id(id)
+    if not sess:
+        from app.core.errors import APIError
+        raise APIError("NOT_FOUND", "Session not found", 404)
+    records = svc.repo.get_attendance_records(id)
+    res = dict(sess._mapping)
+    res["records"] = [dict(r._mapping) for r in records]
+    return res
 
 @m3_router.get("/me/attendance", response_model=List[MyAttendanceResponse])
 def get_my_attendance(svc: M3Service = Depends(get_m3_service), user: CurrentUser = Depends(require_role(["Student"]))):
@@ -70,8 +81,8 @@ def get_my_attendance(svc: M3Service = Depends(get_m3_service), user: CurrentUse
 
 @m3_router.get("/attendance/shortage", response_model=PaginatedResponse)
 def get_attendance_shortage(page: int = 1, page_size: int = 20, svc: M3Service = Depends(get_m3_service), _=Depends(require_role(["Faculty", "Admin"]))):
-    items = svc.get_attendance_shortage((page - 1) * page_size, page_size)
-    return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}
+    items, total = svc.get_attendance_shortage((page - 1) * page_size, page_size)
+    return {"items": [dict(i._mapping) for i in items], "total": total, "page": page, "page_size": page_size}
 
 # --- Exams ---
 @m3_router.post("/exams", status_code=status.HTTP_201_CREATED, response_model=ExamResponse)
@@ -142,5 +153,5 @@ def get_my_cgpa(svc: M3Service = Depends(get_m3_service), user: CurrentUser = De
 
 @m3_router.get("/exams/{id}/summary", response_model=CourseResultSummaryResponse)
 def get_course_result_summary(id: int, svc: M3Service = Depends(get_m3_service), user: CurrentUser = Depends(require_role(["Faculty", "Admin"]))):
-    has_admin = "Exam_Admin" in user.permission_sets
+    has_admin = "Exams_Admin" in user.permission_sets
     return svc.get_course_result_summary(id)

@@ -9,15 +9,18 @@ logger = logging.getLogger(__name__)
 
 def handle_db_error(e: Exception):
     """
-    Catch SQLAlchemy DatabaseError, parse MySQL error code (if 45000), 
+    Catch SQLAlchemy DatabaseError / DBAPIError, parse MySQL error code (if 45000), 
     and raise appropriate APIError.
     """
-    if isinstance(e, DatabaseError):
+    from sqlalchemy.exc import DBAPIError
+    if isinstance(e, (DatabaseError, DBAPIError)):
         orig = getattr(e, 'orig', None)
         if orig:
             # PyMySQL errors are typically tuples: (errno, msg)
             if hasattr(orig, 'args') and len(orig.args) >= 2:
                 errno, msg = orig.args[0], orig.args[1]
+                if isinstance(errno, int) and errno < 0 and (errno + 65536) in DB_ERROR_CODE_MAP:
+                    errno = errno + 65536
                 
                 # Check for our SIGNAL errors (SQLSTATE 45000)
                 # Note: PyMySQL raises OperationalError or InternalError, 
@@ -26,6 +29,10 @@ def handle_db_error(e: Exception):
                     code, http_status = DB_ERROR_CODE_MAP[errno]
                     raise APIError(code=code, message=msg, status_code=http_status)
                 
+                # Fallback message parsing for standard business rules
+                if "attendance" in str(msg).lower() and "75%" in str(msg):
+                    raise APIError(code="ATTENDANCE_BELOW_THRESHOLD", message=str(msg), status_code=status.HTTP_403_FORBIDDEN)
+
                 # Generic Integrity Constraint Violation (e.g. 1062 Duplicate entry)
                 if errno in (1062, 1451, 1452):
                     raise APIError(code="INTEGRITY_ERROR", message=msg, status_code=status.HTTP_409_CONFLICT)

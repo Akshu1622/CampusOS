@@ -51,19 +51,37 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
 
 ---
 
-## Step 1. Verify M2 and M3 Backends
-- **Status:** IN PROGRESS
-- **Tasks:**
-  - Write `scripts/check_m2_m3_api.py`.
-  - Authenticate demo accounts (`admin_core`, `faculty1`, `student1`).
-  - Test all M2 and M3 endpoints per PRD §9.2 and OpenAPI schema.
-  - Verify 2xx status, role authorization (403), and domain error mapping.
-  - Fix any backend errors and update `docs/api/m2_*.md` and `m3_*.md`.
+## Step 1. Verify M2 and M3 Backends (Completed)
+- **Status:** COMPLETED
+- **Script:** `scripts/check_m2_m3_api.py` executed with 57/57 tests passing (0 failures).
+- **Authentication & RBAC:**
+  - Verified demo accounts (`admin_core`, `faculty1`, `student1`, `student3`).
+  - Confirmed 403 Forbidden for unauthorized roles across all endpoints.
+- **Derived Endpoints Added (`[DERIVED]` in API docs):**
+  - `GET /courses/{id}`
+  - `DELETE /courses/{id}`
+  - `GET /curriculum/{id}`
+  - `GET /offerings/{id}`
+  - `GET /enrollments/{id}`
+  - `GET /attendance/sessions/{id}` (includes full session detail and student roster records)
+- **Domain Rejection & Error Code Mappings:**
+  - Standardized PyMySQL 16-bit negative error code resolution in `app/core/errors.py` and `app/db/helpers.py`.
+  - Attendance < 75% exam registration rejection: maps to 403 `ATTENDANCE_BELOW_THRESHOLD` with exact trigger message (`Registration blocked: attendance 50.00% is below 75%`).
+  - Duplicate exam registration: 409 `EXAM_DUPLICATE_REGISTRATION`.
+  - Duplicate enrollment: 409 `DUPLICATE_ENROLLMENT`.
+  - Capacity full: 409 `ENROLLMENT_CAPACITY_FULL`.
+  - Published result modification attempt: 409 `RESULT_ALREADY_PUBLISHED`.
+  - Marks out of bounds: 400 `MARKS_OUT_OF_BOUNDS`.
+- **Bulk Enrollment Procedure Execution:**
+  - Updated `call_bulk_enrollment` in `M2Repository` to parse multiple result sets from `sp_bulk_enrollment`, providing batch totals and per-row status/reasons.
+- **Documentation:**
+  - Created `docs/api/m2_academics.md` and `docs/api/m3_attendance_exams.md`.
+  - Updated `docs/DECISIONS_LOG.md`.
 
 ---
 
 ## Step 2. Build M2 Frontend (Academics & Enrollment)
-- **Status:** PENDING
+- **Status:** IN PROGRESS
 - **Pages:** A-01 to A-08.
 
 ---
