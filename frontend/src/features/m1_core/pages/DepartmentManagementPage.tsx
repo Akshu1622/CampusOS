@@ -36,6 +36,10 @@ export function DepartmentManagementPage() {
       toast.error('Department code and name are required')
       return
     }
+    if (code.length > 10) {
+      toast.error('Department code must not exceed 10 characters')
+      return
+    }
     setFormLoading(true)
     try {
       await apiClient('/departments', {

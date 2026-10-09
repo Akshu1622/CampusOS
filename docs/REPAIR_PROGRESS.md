@@ -150,9 +150,29 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
 
 ---
 
-## Step 5. Fix Small Breakages Across Everything Else
-- **Status:** PENDING
-- `scripts/check_backend_sql.py`, `scripts/smoke_test.py`, `docs/PAGE_HEALTH.md`, standard error handling.
+## Step 5. Fix Small Breakages Across Everything Else (Completed)
+- **Status:** COMPLETED
+- **Backend SQL Verification:**
+  - Updated `scripts/check_backend_sql.py` to connect via PyMySQL and parse AST SQL queries across all backend modules.
+  - Verified 204 SQL statements against live MySQL schema (204/204 passed, 0 syntax or schema errors).
+- **Smoke Tests:**
+  - Ran `scripts/smoke_test.py`: 42 documented endpoints tested across `admin_core`, `faculty1`, `student1`, with 0 unhandled errors (200/201/403 expected).
+- **Entity Creation & 400 Bad Request Resolution:**
+  - `POST /departments`:
+    - Added frontend length validation (<= 10 characters) and backend validation in `m1_core/routers.py`.
+    - Resolved department head by both numeric `id` and alphanumeric `employee_id` (e.g. `EMP-2020-0001`), returning clean 404 `EMPLOYEE_NOT_FOUND` if invalid rather than raw foreign key exception.
+  - `POST /terms`:
+    - Added explicit date ordering validation (`end_date > start_date`) returning 400 `INVALID_DATES`.
+  - Directory Read Access:
+    - Updated `GET /employees` in `m5_hr/routers.py` to allow read access for authenticated roles (`Admin`, `Faculty`, `Student`) so course offerings, individual enrollment, and student course views display instructor names without 403 Forbidden.
+  - Hostel & Room Student Access:
+    - Updated `GET /hostels` and `GET /rooms` in `m6_hostel/routers.py` to allow student read access (`student_or_admin`), eliminating 403 errors on `S04MyHostelPage` and `S05NewHostelRequestPage`.
+  - Exam Registration Self-Service:
+    - Updated `GET /exam-registrations` in `m3_attendance_exams/routers.py` to allow students to retrieve their own registrations while preserving administrative privileges for `Exams_Admin`.
+  - Updated `docs/DEMO_CREDENTIALS.md` with `admin_hr` and `admin_hostel` accounts and permission sets.
+- **Automated Page Crawler & Health Verification:**
+  - Created `scripts/crawl_pages.js` using Playwright to crawl all 78 routes in `frontend/src/routes/index.tsx` under real session contexts for Public, Admin, Faculty, and Student roles.
+  - Produced `docs/PAGE_HEALTH.md`: 78/78 pages passing (100% OK), 0 broken pages.
 
 ---
 

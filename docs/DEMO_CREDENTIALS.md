@@ -6,8 +6,10 @@ All accounts use the password: `password123`
 ## Administrators
 | Username | Role | Permission Set |
 |----------|------|----------------|
-| `admin_core` | Admin | Core_Admin |
+| `admin_core` | Admin | Core_Admin, Academics_Admin, Exams_Admin, Finance_Admin |
 | `admin_finance` | Admin | Finance_Admin |
+| `admin_hr` | Admin | HR_Admin |
+| `admin_hostel` | Admin | Hostel_Admin |
 
 ## Faculty
 | Username | Role | Notes |
