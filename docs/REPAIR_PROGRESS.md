@@ -80,9 +80,24 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
 
 ---
 
-## Step 2. Build M2 Frontend (Academics & Enrollment)
-- **Status:** IN PROGRESS
-- **Pages:** A-01 to A-08.
+## Step 2. Build M2 Frontend (Academics & Enrollment) (Completed)
+- **Status:** COMPLETED
+- **Features Created (`frontend/src/features/m2_academics/`):**
+  - `api.ts`: Typed client for courses, curriculum mapping, course offerings, roster, enrollments, bulk enrollment validation & execution, student self-service (`/me/courses`), faculty teaching (`/faculty/me/offerings`), and master lookups.
+  - `hooks.ts`: Comprehensive React Query hooks with query key factories and cache invalidation.
+  - `pages/A01CourseCatalogPage.tsx`: Course catalog with code (mono), title, credits, department, status, T-LIST filter/search, add/edit drawer, delete dialog.
+  - `pages/A02CurriculumMappingPage.tsx`: Program selector, semester column cards, credit totals, credits mismatch warning alert, add course to semester drawer, remove confirmation.
+  - `pages/A03CourseOfferingsPage.tsx`: Course offerings list, section, faculty, fill level filter, capacity progress bar & status pills (amber >= 90%, error at 100%), add/edit drawer, class roster drawer.
+  - `pages/A04IndividualEnrollmentPage.tsx`: Compact single student enrollment form with live validation panel (student, offering, seats available, term status) and exact backend error alert display.
+  - `pages/A05BulkEnrollmentPage.tsx`: 4-step wizard: 1. Source (CSV/JSON/XML upload or cohort generation); 2. Validate & preview with KPI strip and per-row table; 3. Options & policy selection (ALL_OR_NOTHING vs SKIP_INVALID) with confirmation checkbox; 4. Execution result with summary cards and report link.
+  - `pages/A06EnrollmentRecordsPage.tsx`: Enrollment records list, student search, status & offering filters, CSV export, withdraw enrollment confirmation dialog.
+  - `pages/A07MyCoursesPage.tsx`: Student self-service courses with grid/list view toggle, course cards, instructor, credits, status pills, and detail drawer.
+  - `pages/A08MyTeachingPage.tsx`: Faculty self-service teaching sections with enrollment progress, quick links to mark attendance and grade entry, roster drawer with search and CSV export.
+- **Routing & Navigation:**
+  - Registered all routes in `frontend/src/routes/index.tsx` for Admin (`/admin/academics/*`), Faculty (`/faculty/teaching`, `/faculty/courses`), and Student (`/student/courses`).
+  - Added navigation items to `frontend/src/components/AppShell.tsx` for Admin, Faculty, and Student roles.
+- **Verification:**
+  - TypeScript compilation and production build (`npm run build`) succeeded with 0 errors.
 
 ---
 

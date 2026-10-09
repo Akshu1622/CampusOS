@@ -15,6 +15,16 @@ import { ProgramManagementPage } from '../features/m1_core/pages/ProgramManageme
 import { TermManagementPage } from '../features/m1_core/pages/TermManagementPage'
 import { StudentMasterPage } from '../features/m1_core/pages/StudentMasterPage'
 import {
+  A01CourseCatalogPage,
+  A02CurriculumMappingPage,
+  A03CourseOfferingsPage,
+  A04IndividualEnrollmentPage,
+  A05BulkEnrollmentPage,
+  A06EnrollmentRecordsPage,
+  A07MyCoursesPage,
+  A08MyTeachingPage,
+} from '../features/m2_academics/pages'
+import {
   FeeStructureManagementPage,
   FeeAssignmentWizardPage,
   LateFeeRuleConfigPage,
@@ -89,6 +99,14 @@ export const router = createBrowserRouter([
       { path: 'programs', element: <ProgramManagementPage /> },
       { path: 'terms', element: <TermManagementPage /> },
       { path: 'students', element: <StudentMasterPage /> },
+      { path: 'academics/courses', element: <A01CourseCatalogPage /> },
+      { path: 'courses', element: <A01CourseCatalogPage /> },
+      { path: 'academics/curriculum', element: <A02CurriculumMappingPage /> },
+      { path: 'academics/offerings', element: <A03CourseOfferingsPage /> },
+      { path: 'academics/enrollment/individual', element: <A04IndividualEnrollmentPage /> },
+      { path: 'academics/enrollment/bulk', element: <A05BulkEnrollmentPage /> },
+      { path: 'academics/enrollment/records', element: <A06EnrollmentRecordsPage /> },
+      { path: 'enrollments/records', element: <A06EnrollmentRecordsPage /> },
       { path: 'finance/fee-structures', element: <FeeStructureManagementPage /> },
       { path: 'finance/fee-assignment', element: <FeeAssignmentWizardPage /> },
       { path: 'finance/late-fee-rules', element: <LateFeeRuleConfigPage /> },
@@ -124,6 +142,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <FacultyDashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'courses', element: <A08MyTeachingPage /> },
+      { path: 'teaching', element: <A08MyTeachingPage /> },
       { path: 'hr/apply-leave', element: <ApplyLeavePage /> },
       { path: 'hr/my-leave', element: <MyLeavePage /> },
       { path: 'hr/payslips', element: <MyPayslipsPage /> },
@@ -140,6 +160,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <StudentDashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'courses', element: <A07MyCoursesPage /> },
       { path: 'fees', element: <MyFeesAndDuesPage /> },
       { path: 'pay', element: <PayFeeWizardPage /> },
       { path: 'receipt/:id', element: <PaymentConfirmationReceiptPage /> },
