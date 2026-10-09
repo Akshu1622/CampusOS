@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Card, Button, Table, type Column, Modal, Input, Select, Progress, StatusPill } from '@/components/ui'
 import { useHostels, useRooms, useOccupancy, useCreateHostel, useCreateRoom } from '../hooks'
+import { toast } from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -53,7 +54,16 @@ export function S01HostelRoomManagementPage() {
   }
 
   const onRoomSubmit = (data: any) => {
-    createRoom.mutate(data, {
+    const hostelId = Number(data.hostel_id || selectedHostelId || hostels[0]?.id)
+    if (!hostelId || isNaN(hostelId)) {
+      toast.error('Please select a valid hostel')
+      return
+    }
+    createRoom.mutate({
+      ...data,
+      hostel_id: hostelId,
+      bed_capacity: Number(data.bed_capacity)
+    }, {
       onSuccess: () => {
         setIsRoomModalOpen(false)
         resetRoom()

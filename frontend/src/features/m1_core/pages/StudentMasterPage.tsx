@@ -26,9 +26,13 @@ export function StudentMasterPage() {
         apiClient(`/students?page=${page}&page_size=${pageSize}&search=${search}`),
         apiClient('/programs')
       ])
+      const progs = Array.isArray(progRes) ? progRes : []
       setStudents((stuRes as any)?.items || [])
       setTotal((stuRes as any)?.total || 0)
-      setPrograms(Array.isArray(progRes) ? progRes : [])
+      setPrograms(progs)
+      if (progs.length > 0) {
+        setFormData(prev => ({ ...prev, program_id: prev.program_id || String(progs[0].id) }))
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch data')
     } finally {
@@ -42,19 +46,31 @@ export function StudentMasterPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.program_id || isNaN(Number(formData.program_id))) {
+      toast.error('Please select a program')
+      return
+    }
+    if (!formData.batch_year || isNaN(Number(formData.batch_year))) {
+      toast.error('Please enter a valid batch year (e.g. 2025)')
+      return
+    }
     setFormLoading(true)
     try {
       await apiClient('/students', {
         method: 'POST',
         data: {
-          ...formData,
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim() || null,
+          program_id: Number(formData.program_id),
           batch_year: Number(formData.batch_year)
         }
       })
       toast.success('Student created successfully')
       setIsDrawerOpen(false)
       fetchData()
-      setFormData({ first_name: '', last_name: '', email: '', phone: '', program_id: '', batch_year: '' })
+      setFormData({ first_name: '', last_name: '', email: '', phone: '', program_id: programs[0]?.id ? String(programs[0].id) : '', batch_year: '' })
     } catch (err: any) {
       toast.error(err.message || 'Failed to create student')
     } finally {
@@ -163,7 +179,7 @@ export function StudentMasterPage() {
               <Select 
                 label="Program" 
                 required 
-                options={programs.map(p => ({ value: String(p.id || p.name), label: p.name }))}
+                options={programs.map(p => ({ value: String(p.id), label: `${p.code ? p.code + ' - ' : ''}${p.name}` }))}
                 value={formData.program_id}
                 onChange={(e) => setFormData({...formData, program_id: (e as any)?.target?.value || e})}
               />

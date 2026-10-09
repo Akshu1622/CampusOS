@@ -19,8 +19,13 @@ export function ProgramManagementPage() {
         apiClient('/programs'),
         apiClient('/departments')
       ])
-      setPrograms(Array.isArray(progRes) ? progRes : [])
-      setDepartments(Array.isArray(depRes) ? depRes : [])
+      const progs = Array.isArray(progRes) ? progRes : []
+      const depts = Array.isArray(depRes) ? depRes : []
+      setPrograms(progs)
+      setDepartments(depts)
+      if (depts.length > 0) {
+        setFormData(prev => ({ ...prev, department_id: prev.department_id || String(depts[0].id) }))
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch data')
     } finally {
@@ -34,20 +39,25 @@ export function ProgramManagementPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.department_id || isNaN(Number(formData.department_id))) {
+      toast.error('Please select a department')
+      return
+    }
     setFormLoading(true)
     try {
       await apiClient('/programs', { 
         method: 'POST',
         data: {
-          ...formData,
-          duration_years: Number(formData.duration_years),
-          total_credits: Number(formData.total_credits)
+          name: formData.name.trim(),
+          department_id: Number(formData.department_id),
+          duration_years: Number(formData.duration_years || 4),
+          total_credits: Number(formData.total_credits || 160)
         }
       })
       toast.success('Program created successfully')
       setIsDrawerOpen(false)
       fetchData()
-      setFormData({ name: '', department_id: '', duration_years: '', total_credits: '' })
+      setFormData({ name: '', department_id: departments[0]?.id ? String(departments[0].id) : '', duration_years: '', total_credits: '' })
     } catch (err: any) {
       toast.error(err.message || 'Failed to create program')
     } finally {
@@ -101,7 +111,7 @@ export function ProgramManagementPage() {
           <Select 
             label="Department" 
             required 
-            options={departments.map(d => ({ value: String(d.id || d.code), label: d.name }))} 
+            options={departments.map(d => ({ value: String(d.id), label: `${d.code} - ${d.name}` }))} 
             value={formData.department_id} 
             onChange={(e) => setFormData({...formData, department_id: (e as any)?.target?.value || e})} 
           />

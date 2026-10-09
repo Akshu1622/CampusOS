@@ -15,6 +15,7 @@ from app.modules.m1_core.schemas import (
 from app.modules.m1_core.service import M1Service
 from app.core.security import get_password_hash
 from app.core.limiter import limiter
+from app.core.errors import APIError
 
 router = APIRouter()
 
@@ -63,10 +64,15 @@ def get_users(page: int = 1, page_size: int = 20, svc: M1Service = Depends(get_s
 
 @router.post("/users", response_model=UserResponse, tags=["Users"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_user(req: UserCreateRequest, svc: M1Service = Depends(get_service)):
-    uid = svc.repo.create_user(req.username, get_password_hash(req.password), req.student_id, req.employee_id)
-    for role in req.roles:
-        svc.repo.assign_user_role(uid, role)
-    return {"id": uid, "username": req.username, "status": "ACTIVE", "student_id": req.student_id, "employee_id": req.employee_id, "roles": req.roles}
+    try:
+        uid = svc.repo.create_user(req.username, get_password_hash(req.password), req.student_id, req.employee_id)
+        for role in req.roles:
+            svc.repo.assign_user_role(uid, role)
+        return {"id": uid, "username": req.username, "status": "ACTIVE", "student_id": req.student_id, "employee_id": req.employee_id, "roles": req.roles}
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_user_account_username" in str(e):
+            raise APIError("DUPLICATE_USERNAME", f"Username '{req.username}' already exists", status_code=status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
 @router.get("/users/{id}", response_model=UserResponse, tags=["Users"])
 def get_user(id: int, user: CurrentUser = Depends(get_current_user), svc: M1Service = Depends(get_service)):
@@ -105,9 +111,14 @@ def get_departments(svc: M1Service = Depends(get_service)):
 
 @router.post("/departments", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_department(req: DepartmentCreateRequest, svc: M1Service = Depends(get_service)):
-    head_id = int(req.head) if req.head and req.head.isdigit() else None
-    svc.repo.create_department(req.code, req.name, head_id)
-    return {"message": "Department created"}
+    try:
+        head_id = int(req.head) if req.head and req.head.isdigit() else None
+        svc.repo.create_department(req.code.upper(), req.name, head_id)
+        return {"message": "Department created"}
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_department_code" in str(e):
+            raise APIError("DUPLICATE_CODE", f"Department code '{req.code}' already exists", status_code=status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
 @router.get("/programs", response_model=List[ProgramResponse], tags=["Catalog"])
 def get_programs(svc: M1Service = Depends(get_service)):
@@ -115,10 +126,14 @@ def get_programs(svc: M1Service = Depends(get_service)):
 
 @router.post("/programs", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_program(req: ProgramCreateRequest, svc: M1Service = Depends(get_service)):
-    # Generate code from name, e.g. "B.Tech Computer Science" -> "B.TECH_CO" or just a stripped version
-    code = "".join([c.upper() for c in req.name if c.isalnum() or c.isspace()]).replace(" ", "_")[:10]
-    svc.repo.create_program(code, req.name, req.department_id, req.duration_years, req.total_credits)
-    return {"message": "Program created"}
+    try:
+        code = "".join([c.upper() for c in req.name if c.isalnum() or c.isspace()]).replace(" ", "_")[:10]
+        svc.repo.create_program(code, req.name, req.department_id, req.duration_years, req.total_credits)
+        return {"message": "Program created"}
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_program_code" in str(e):
+            raise APIError("DUPLICATE_CODE", f"Program already exists", status_code=status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
 @router.get("/terms", response_model=List[TermResponse], tags=["Catalog"])
 def get_terms(svc: M1Service = Depends(get_service)):
@@ -126,8 +141,13 @@ def get_terms(svc: M1Service = Depends(get_service)):
 
 @router.post("/terms", response_model=dict, tags=["Catalog"], dependencies=[Depends(require_role(["ADMIN", "SUPERADMIN"]))])
 def create_term(req: TermCreateRequest, svc: M1Service = Depends(get_service)):
-    svc.repo.create_term(req.year, req.label, req.start_date, req.end_date, req.is_current)
-    return {"message": "Term created"}
+    try:
+        svc.repo.create_term(req.year, req.label, req.start_date, req.end_date, req.is_current)
+        return {"message": "Term created"}
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_academic_term" in str(e):
+            raise APIError("DUPLICATE_TERM", f"Academic term already exists", status_code=status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
 @router.get("/students", response_model=PaginatedStudents, tags=["Students"], dependencies=[Depends(require_role(["ADMIN", "FACULTY", "HR"]))])
 def get_students(page: int = 1, page_size: int = 20, svc: M1Service = Depends(get_service)):
@@ -144,12 +164,15 @@ def get_students(page: int = 1, page_size: int = 20, svc: M1Service = Depends(ge
 def create_student(req: StudentCreateRequest, svc: M1Service = Depends(get_service)):
     gid = svc.repo.generate_student_id(req.batch_year)
     if not gid:
-        from app.core.errors import APIError
         raise APIError("ID_GENERATION_FAILED", "Failed to generate student ID", 500)
-    sid = svc.repo.create_student(gid, req.model_dump())
-    rows, _ = svc.repo.get_students(0, 1) # Just a hack to get format since get_student_by_id isn't in repo, let's just return what we have
-    return StudentResponse(
-        id=sid, global_student_id=gid, first_name=req.first_name, last_name=req.last_name,
-        email=req.email, phone=req.phone, batch_year=req.batch_year,
-        program_id=req.program_id, status="ACTIVE"
-    )
+    try:
+        sid = svc.repo.create_student(gid, req.model_dump())
+        return StudentResponse(
+            id=sid, global_student_id=gid, first_name=req.first_name, last_name=req.last_name,
+            email=req.email, phone=req.phone, batch_year=req.batch_year,
+            program_id=req.program_id, status="ACTIVE"
+        )
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_student_email" in str(e):
+            raise APIError("DUPLICATE_EMAIL", f"Student with email '{req.email}' already exists", status_code=status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status_code=status.HTTP_400_BAD_REQUEST)

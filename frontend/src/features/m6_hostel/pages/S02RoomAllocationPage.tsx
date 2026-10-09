@@ -34,10 +34,12 @@ export function S02RoomAllocationPage() {
     defaultValues: { student_id: 0, room_id: 0, from_date: new Date().toISOString().split('T')[0] }
   })
 
-  const filteredStudents = students.filter((s: any) => 
-    s.name?.toLowerCase().includes(searchStudent.toLowerCase()) || 
-    s.university_id?.toLowerCase().includes(searchStudent.toLowerCase())
-  ).slice(0, 10)
+  const filteredStudents = students.filter((s: any) => {
+    const fullName = `${s.first_name || ''} ${s.last_name || ''}`.trim()
+    const studentId = s.global_student_id || s.student_id || ''
+    return fullName.toLowerCase().includes(searchStudent.toLowerCase()) || 
+      String(studentId).toLowerCase().includes(searchStudent.toLowerCase())
+  }).slice(0, 10)
 
   const selectedStudent = students.find((s: any) => s.id === selectedStudentId)
   const selectedRoom = rooms.find(r => r.id === selectedRoomId)
@@ -61,7 +63,7 @@ export function S02RoomAllocationPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Pane: Student Picker */}
           <Card title="1. Select Student">
             <div className="space-y-4">
@@ -82,8 +84,8 @@ export function S02RoomAllocationPage() {
                     }}
                   >
                     <div>
-                      <div className="font-medium text-sm text-gray-900">{s.name}</div>
-                      <div className="text-xs text-gray-500">{s.university_id} • {s.program_id}</div>
+                      <div className="font-medium text-sm text-gray-900">{s.first_name} {s.last_name}</div>
+                      <div className="text-xs text-gray-500">{s.global_student_id || s.student_id} • Program #{s.program_id}</div>
                     </div>
                   </div>
                 ))}
@@ -141,7 +143,7 @@ export function S02RoomAllocationPage() {
             <div className="space-y-2">
               <div className="text-sm text-gray-500">Summary</div>
               <div className="text-lg font-medium text-gray-900 flex items-center gap-3">
-                {selectedStudent ? <span className="text-primary-600">{selectedStudent.name}</span> : <span className="text-gray-400 italic">No student selected</span>}
+                {selectedStudent ? <span className="text-primary-600">{selectedStudent.first_name} {selectedStudent.last_name} ({selectedStudent.global_student_id || selectedStudent.student_id})</span> : <span className="text-gray-400 italic">No student selected</span>}
                 <span className="text-gray-400">→</span>
                 {selectedRoom ? (
                   <span className="text-primary-600">{selectedHostel?.name} - {selectedRoom.room_number}</span>

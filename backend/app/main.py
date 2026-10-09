@@ -49,7 +49,7 @@ import uuid
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = [{"field": ".".join(map(str, err.get("loc", []))), "msg": err.get("msg", "")} for err in exc.errors()]
-    return create_error_response("VALIDATION_ERROR", "Invalid request parameters", 400, field_errors=errors)
+    return create_error_response("VALIDATION_ERROR", "Invalid request parameters", 422, field_errors=errors)
 
 @app.exception_handler(APIError)
 async def api_error_handler(request: Request, exc: APIError):

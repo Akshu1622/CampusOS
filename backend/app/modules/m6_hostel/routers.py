@@ -8,7 +8,7 @@ from . import schemas, service
 router = APIRouter(prefix="/api/v1", tags=["Hostel"])
 
 # Admin access setup: Any admin with Hostel_Admin permission or Super_Admin
-def hostel_admin(user=Depends(require_permission(["Hostel_Admin", "Super_Admin"]))):
+def hostel_admin(user=Depends(require_role(["Admin", "SuperAdmin"]))):
     return user
 
 # A dependency for general Admin that we already have is just require_role(["Admin"])

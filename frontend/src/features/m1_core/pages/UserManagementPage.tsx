@@ -41,9 +41,19 @@ export function UserManagementPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.password || formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long')
+      return
+    }
     setFormLoading(true)
     try {
-      await apiClient('/users', { data: formData })
+      await apiClient('/users', {
+        data: {
+          username: formData.username.trim(),
+          password: formData.password,
+          roles: [formData.role || 'Student'],
+        }
+      })
       toast.success('User created successfully')
       setIsDrawerOpen(false)
       fetchUsers()
@@ -151,7 +161,8 @@ export function UserManagementPage() {
           <Input 
             label="Password" 
             type="password"
-            required 
+            required
+            minLength={8} 
             value={formData.password}
             onChange={(e) => setFormData({...formData, password: e.target.value})}
             helperText="Provide a temporary password for the user."

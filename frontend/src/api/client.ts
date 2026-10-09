@@ -116,11 +116,24 @@ export async function apiClient<T>(endpoint: string, options: FetchOptions = {})
   }
 
   if (!response.ok) {
-    let errorData
+    let errorData: any
     try {
       errorData = await response.json()
+      if (errorData?.field_errors && Array.isArray(errorData.field_errors) && errorData.field_errors.length > 0) {
+        const details = errorData.field_errors
+          .map((f: any) => `${f.field ? f.field.replace(/^body\./, '') : 'field'}: ${f.msg}`)
+          .join(', ')
+        errorData.message = `${errorData.message || 'Validation error'}: ${details}`
+      } else if (errorData?.detail) {
+        if (typeof errorData.detail === 'string') {
+          errorData.message = errorData.detail
+        } else if (Array.isArray(errorData.detail)) {
+          const details = errorData.detail.map((f: any) => `${f.loc ? f.loc.join('.') : 'field'}: ${f.msg}`).join(', ')
+          errorData.message = `Validation error: ${details}`
+        }
+      }
     } catch {
-      errorData = { message: 'An unknown error occurred' }
+      errorData = { message: `Request failed with status ${response.status}` }
     }
     return Promise.reject(errorData)
   }

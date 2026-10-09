@@ -30,10 +30,21 @@ export function DepartmentManagementPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    const code = formData.code.trim().toUpperCase()
+    const name = formData.name.trim()
+    if (!code || !name) {
+      toast.error('Department code and name are required')
+      return
+    }
     setFormLoading(true)
     try {
-      // Assuming endpoint is POST /departments
-      await apiClient('/departments', { data: formData })
+      await apiClient('/departments', {
+        data: {
+          code,
+          name,
+          head: formData.head.trim() || undefined
+        }
+      })
       toast.success('Department created successfully')
       setIsDrawerOpen(false)
       fetchDepartments()
@@ -105,7 +116,7 @@ export function DepartmentManagementPage() {
 
       <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Add Department">
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <Input label="Department Code" required value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} placeholder="e.g. CS" />
+          <Input label="Department Code" required maxLength={10} value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} placeholder="e.g. AI, ECE" />
           <Input label="Department Name" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Computer Science" />
           <Input label="Head (Employee ID)" value={formData.head} onChange={(e) => setFormData({...formData, head: e.target.value})} placeholder="Optional" />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>

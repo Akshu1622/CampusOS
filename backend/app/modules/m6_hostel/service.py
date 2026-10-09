@@ -16,8 +16,13 @@ def get_student_id(db: Session, user_id: int) -> int:
 
 # --- Hostel ---
 def create_hostel(db: Session, data: schemas.HostelCreate) -> schemas.HostelResponse:
-    h_id = repository.create_hostel(db, data)
-    return get_hostel(db, h_id)
+    try:
+        h_id = repository.create_hostel(db, data)
+        return get_hostel(db, h_id)
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_hostel_name" in str(e):
+            raise APIError("DUPLICATE_HOSTEL", f"Hostel '{data.name}' already exists", status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status.HTTP_400_BAD_REQUEST)
 
 def get_hostel(db: Session, hostel_id: int) -> schemas.HostelResponse:
     h = repository.get_hostel(db, hostel_id)
@@ -41,8 +46,13 @@ def delete_hostel(db: Session, hostel_id: int):
 # --- Room ---
 def create_room(db: Session, data: schemas.RoomCreate) -> schemas.RoomResponse:
     get_hostel(db, data.hostel_id)
-    r_id = repository.create_room(db, data)
-    return get_room(db, r_id)
+    try:
+        r_id = repository.create_room(db, data)
+        return get_room(db, r_id)
+    except Exception as e:
+        if "Duplicate entry" in str(e) or "UK_hostel_room" in str(e):
+            raise APIError("DUPLICATE_ROOM", f"Room '{data.room_number}' already exists in this hostel", status.HTTP_409_CONFLICT)
+        raise APIError("BAD_REQUEST", str(e), status.HTTP_400_BAD_REQUEST)
 
 def get_room(db: Session, room_id: int) -> schemas.RoomResponse:
     r = repository.get_room(db, room_id)

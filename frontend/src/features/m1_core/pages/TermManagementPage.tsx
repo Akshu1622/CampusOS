@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Input, StatusPill, Drawer, EmptyState, ConfirmationDialog } from '@/components/ui'
+import { Card, Button, Input, Select, StatusPill, Drawer, EmptyState, ConfirmationDialog } from '@/components/ui'
 import { apiClient } from '@/api/client'
 import { toast } from 'react-hot-toast'
 import { Plus, Calendar, MoreHorizontal } from 'lucide-react'
@@ -8,7 +8,7 @@ export function TermManagementPage() {
   const [terms, setTerms] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [formData, setFormData] = useState({ year: '', label: '', start_date: '', end_date: '', is_current: false })
+  const [formData, setFormData] = useState({ year: new Date().getFullYear().toString(), label: 'FALL', start_date: '', end_date: '', is_current: false })
   const [formLoading, setFormLoading] = useState(false)
   const [confirmCurrentTerm, setConfirmCurrentTerm] = useState(false)
 
@@ -30,13 +30,29 @@ export function TermManagementPage() {
 
   const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
+    if (!formData.year || isNaN(Number(formData.year))) {
+      toast.error('Please enter a valid academic year number (e.g. 2025)')
+      return
+    }
+    if (!formData.start_date || !formData.end_date) {
+      toast.error('Please provide both start and end date')
+      return
+    }
     setFormLoading(true)
     try {
-      await apiClient('/terms', { data: formData })
+      await apiClient('/terms', {
+        data: {
+          year: Number(formData.year),
+          label: formData.label,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          is_current: formData.is_current,
+        }
+      })
       toast.success('Term created successfully')
       setIsDrawerOpen(false)
       fetchTerms()
-      setFormData({ year: '', label: '', start_date: '', end_date: '', is_current: false })
+      setFormData({ year: new Date().getFullYear().toString(), label: 'FALL', start_date: '', end_date: '', is_current: false })
       setConfirmCurrentTerm(false)
     } catch (err: any) {
       toast.error(err.message || 'Failed to create term')
@@ -120,8 +136,18 @@ export function TermManagementPage() {
 
       <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Add Academic Term">
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <Input label="Academic Year" required value={formData.year} onChange={(e) => setFormData({...formData, year: e.target.value})} placeholder="e.g. 2025-26" />
-          <Input label="Term Label" required value={formData.label} onChange={(e) => setFormData({...formData, label: e.target.value})} placeholder="e.g. Semester 1" />
+          <Input label="Academic Year" type="number" required value={formData.year} onChange={(e) => setFormData({...formData, year: e.target.value})} placeholder="e.g. 2025" />
+          <Select 
+            label="Term Label" 
+            options={[
+              { value: 'FALL', label: 'FALL' },
+              { value: 'SPRING', label: 'SPRING' },
+              { value: 'SUMMER', label: 'SUMMER' },
+              { value: 'WINTER', label: 'WINTER' },
+            ]}
+            value={formData.label} 
+            onChange={(e) => setFormData({...formData, label: (e as any)?.target?.value || e})} 
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Input label="Start Date" type="date" required value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} />
             <Input label="End Date" type="date" required value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} />
