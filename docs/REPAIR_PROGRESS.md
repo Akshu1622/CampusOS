@@ -130,9 +130,23 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
 
 ---
 
-## Step 4. Tests for M2 and M3
-- **Status:** PENDING
-- **Playwright E2E & Vitest unit tests**, responsive screenshots.
+## Step 4. Tests for M2 and M3 (Completed)
+- **Status:** COMPLETED
+- **Vitest Unit Test Suites (`npm test`):**
+  - `src/features/m2_academics/bulk_enrollment_parsing.test.ts`: 5 tests covering CSV header parsing, whitespace handling, missing header validation, JSON array validation, root-object rejection, and XML DOM parsing for student/offering item pairs.
+  - `src/features/m3_attendance_exams/attendance_math.test.ts`: 3 tests covering attendance percentage decimal rounding, 75% rule threshold boundaries, and exact gap-to-75 math calculations.
+  - `src/features/m3_attendance_exams/marks_validation.test.ts`: 5 tests covering bounds `[0, max_marks]`, negative values rejection, exceeds-max rejection, non-numeric validation, and immutable published status locking.
+  - Overall Vitest suite: 18 passed across 5 test files (100% pass rate).
+- **Playwright E2E Suites (`npx playwright test`):**
+  - `tests/e2e/m2_academics.spec.ts`: 8 tests covering pages A-01 through A-08 with real role logins (`admin_core`, `student1`, `faculty1`), data rendering, and negative scenarios (duplicate enrollment attempt, invalid CSV bulk enrollment rows preview).
+  - `tests/e2e/m3_attendance_exams.spec.ts`: 12 tests covering pages E-01 through E-12 with real role logins (`admin_core`, `student1`, `student3`), data rendering, and negative business rule validations (low attendance student exam registration rejection, marks > max_marks validation, published results modification lock).
+  - Combined Playwright suite: 20 passed out of 20 tests (100% pass rate).
+- **Responsive Screenshots (`docs/repair_screenshots/m2_m3/`):**
+  - Generated all 60 screenshot artifacts across 20 pages at 3 viewports:
+    - Desktop: `1440px`
+    - Tablet: `768px`
+    - Mobile: `375px`
+  - A-01 to A-08 (24 images) + E-01 to E-12 (36 images).
 
 ---
 
