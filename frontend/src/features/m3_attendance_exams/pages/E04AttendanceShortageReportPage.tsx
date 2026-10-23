@@ -1,36 +1,72 @@
 import React, { useState } from 'react'
 import {
-  Card, Button, Input, Table, StatusPill, EmptyState, LoadingSkeleton
+  Card, Button, Input, Select, Table, StatusPill, EmptyState, LoadingSkeleton, StatCard
 } from '@/components/ui'
+import { GroupedBarChart } from '@/components/ui/Charts'
 import { useAttendanceShortage } from '../hooks'
+import { useCourses, useDepartments } from '../../m2_academics/hooks'
+import { calculateGapTo75 } from '../utils'
 import type { AttendanceShortageItem } from '../api'
+import type { Course } from '../../m2_academics/api'
 import {
-  Search, Download, Users, AlertTriangle, AlertCircle
+  Search, Download, Users, AlertTriangle, AlertCircle, BookOpen, Layers
 } from 'lucide-react'
 
 export function E04AttendanceShortageReportPage() {
   const [search, setSearch] = useState('')
+  const [selectedCourse, setSelectedCourse] = useState<string>('')
+  const [selectedDept, setSelectedDept] = useState<string>('')
+  const [threshold, setThreshold] = useState<number>(75)
 
   const { data: shortageData, isLoading, error } = useAttendanceShortage({ page_size: 200 })
   const items = shortageData?.items || []
 
-  const filteredItems = items.filter(i =>
-    i.global_student_id.toLowerCase().includes(search.toLowerCase()) ||
-    i.first_name.toLowerCase().includes(search.toLowerCase()) ||
-    i.last_name.toLowerCase().includes(search.toLowerCase()) ||
-    i.course_code.toLowerCase().includes(search.toLowerCase())
-  )
+  const { data: coursesData } = useCourses({ page_size: 200 })
+  const courses = coursesData?.items || []
 
-  const distinctCourses = new Set(items.map(i => i.course_code)).size
+  const { data: deptsData } = useDepartments()
+  const departments = deptsData || []
+
+  const filteredItems = items.filter(i => {
+    const matchesSearch =
+      i.global_student_id.toLowerCase().includes(search.toLowerCase()) ||
+      i.first_name.toLowerCase().includes(search.toLowerCase()) ||
+      i.last_name.toLowerCase().includes(search.toLowerCase()) ||
+      i.course_code.toLowerCase().includes(search.toLowerCase())
+
+    const matchesCourse = selectedCourse ? i.course_code === selectedCourse : true
+    const matchesThreshold = i.attendance_pct < threshold
+
+    return matchesSearch && matchesCourse && matchesThreshold
+  })
+
+  const distinctCourses = new Set(filteredItems.map(i => i.course_code)).size
+
+  // Calculate average gap to threshold
+  const totalGap = filteredItems.reduce((sum, item) => {
+    return sum + calculateGapTo75(item.sessions_attended, item.sessions_held, threshold)
+  }, 0)
+  const avgGap = filteredItems.length > 0 ? (totalGap / filteredItems.length).toFixed(1) : '0'
+
+  // Chart data: shortage count per course
+  const courseShortageCounts = React.useMemo(() => {
+    const map = new Map<string, number>()
+    filteredItems.forEach(item => {
+      map.set(item.course_code, (map.get(item.course_code) || 0) + 1)
+    })
+    return Array.from(map.entries()).map(([course, count]) => ({
+      course,
+      students: count
+    }))
+  }, [filteredItems])
 
   const handleExportCSV = () => {
-    const headers = ['Student_ID', 'Student_Name', 'Course_Code', 'Course_Title', 'Held', 'Attended', 'Attendance_Pct', 'Shortage_Gap_To_75']
+    const headers = ['Student_ID', 'Student_Name', 'Course_Code', 'Course_Title', 'Held', 'Attended', 'Attendance_Pct', 'Shortage_Gap_Sessions_Needed']
     const rows = filteredItems.map(i => {
-      // Calculate gap to 75%: (0.75 * held - attended)
-      const gap = Math.max(0, Math.ceil(0.75 * i.sessions_held - i.sessions_attended))
+      const gap = calculateGapTo75(i.sessions_attended, i.sessions_held, threshold)
       return [
         i.global_student_id,
-        `${i.first_name} ${i.last_name}`,
+        `"${i.first_name} ${i.last_name}"`,
         i.course_code,
         `"${i.course_title}"`,
         i.sessions_held,
@@ -44,7 +80,7 @@ export function E04AttendanceShortageReportPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', 'attendance_shortage_report.csv')
+    link.setAttribute('download', `attendance_shortage_report_threshold_${threshold}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -52,26 +88,38 @@ export function E04AttendanceShortageReportPage() {
 
   const columns = [
     {
-      key: 'student_id',
-      header: 'Student ID',
+      key: 'student',
+      header: 'Student',
       render: (row: AttendanceShortageItem) => (
-        <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>
-          {row.global_student_id}
-        </span>
-      )
-    },
-    {
-      key: 'name',
-      header: 'Student Name',
-      render: (row: AttendanceShortageItem) => (
-        <span style={{ fontWeight: 500 }}>
-          {row.first_name} {row.last_name}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-chip-alerts-bg)',
+            color: 'var(--color-chip-alerts-text)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 600,
+            fontSize: '11px'
+          }}>
+            {row.first_name?.[0] || 'S'}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '13px' }}>
+              {row.first_name} {row.last_name}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+              {row.global_student_id}
+            </div>
+          </div>
+        </div>
       )
     },
     {
       key: 'course',
-      header: 'Course',
+      header: 'Course Offering',
       render: (row: AttendanceShortageItem) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
@@ -87,7 +135,7 @@ export function E04AttendanceShortageReportPage() {
       key: 'attendance',
       header: 'Held / Attended',
       render: (row: AttendanceShortageItem) => (
-        <span style={{ fontSize: '13px' }}>
+        <span className="tabular-nums" style={{ fontSize: '13px' }}>
           {row.sessions_attended} / {row.sessions_held} sessions
         </span>
       )
@@ -104,11 +152,11 @@ export function E04AttendanceShortageReportPage() {
     },
     {
       key: 'gap',
-      header: 'Gap to 75% Threshold',
+      header: `Gap to ${threshold}%`,
       render: (row: AttendanceShortageItem) => {
-        const gap = Math.max(0, Math.ceil(0.75 * row.sessions_held - row.sessions_attended))
+        const gap = calculateGapTo75(row.sessions_attended, row.sessions_held, threshold)
         return (
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-error)' }}>
+          <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-error)' }}>
             {gap} session{gap === 1 ? '' : 's'} needed
           </span>
         )
@@ -118,56 +166,114 @@ export function E04AttendanceShortageReportPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+      {/* Header (T-REPORT Header) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 6px', borderRadius: '4px' }}>
               E-04
             </span>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Attendance Shortage Report (&lt; 75%)
+            <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+              Attendance Shortage Report
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Students with attendance below 75% who are currently blocked from exam registration.
+            Identifies students below the 75% attendance threshold who are blocked from examination registration.
           </p>
         </div>
         <Button variant="secondary" icon={<Download size={16} />} onClick={handleExportCSV}>
-          Export Report CSV
+          Export CSV
         </Button>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <Card padding={16}>
-          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Total Students in Shortage</div>
-          <div style={{ fontSize: '26px', fontWeight: 700, marginTop: '4px', color: 'var(--color-error)' }}>
-            {items.length}
+      {/* Parameters Bar (T-REPORT Parameters Bar) */}
+      <Card variant="compact" padding={16}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 200px', minWidth: '180px' }}>
+            <Input
+              placeholder="Search student ID, name, course..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              leftIcon={<Search size={16} />}
+            />
           </div>
-        </Card>
-        <Card padding={16}>
-          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Affected Courses</div>
-          <div style={{ fontSize: '26px', fontWeight: 700, marginTop: '4px' }}>
-            {distinctCourses}
-          </div>
-        </Card>
-      </div>
 
-      {/* Search Bar */}
-      <Card padding={16}>
-        <div style={{ maxWidth: '360px' }}>
-          <Input
-            placeholder="Search student ID, name, or course..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            leftIcon={<Search size={16} />}
-          />
+          <div style={{ width: '220px' }}>
+            <Select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              options={[
+                { value: '', label: 'All Courses' },
+                ...courses.map((c: Course) => ({
+                  value: c.code,
+                  label: `${c.code} - ${c.title}`
+                }))
+              ]}
+            />
+          </div>
+
+          <div style={{ width: '160px' }}>
+            <Select
+              value={String(threshold)}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              options={[
+                { value: '75', label: 'Threshold: < 75%' },
+                { value: '80', label: 'Threshold: < 80%' },
+                { value: '70', label: 'Threshold: < 70%' },
+                { value: '60', label: 'Threshold: < 60%' }
+              ]}
+            />
+          </div>
         </div>
       </Card>
 
-      {/* Main Table */}
-      <Card padding={0}>
+      {/* KPI Cards Strip (3 StatCards with Rose / alerts icon chip) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <StatCard
+          label="Students in Shortage"
+          value={filteredItems.length}
+          icon={<AlertTriangle size={20} />}
+          moduleColor="alerts"
+          supportText={`Below ${threshold}% attendance`}
+          supportColor="error"
+        />
+        <StatCard
+          label="Courses Affected"
+          value={distinctCourses}
+          icon={<BookOpen size={20} />}
+          moduleColor="alerts"
+          supportText="Active course offerings"
+          supportColor="neutral"
+        />
+        <StatCard
+          label="Average Shortage Gap"
+          value={`${avgGap} cls`}
+          icon={<Users size={20} />}
+          moduleColor="alerts"
+          supportText="Classes needed to reach 75%"
+          supportColor="error"
+        />
+      </div>
+
+      {/* Shortage by Course Chart */}
+      {courseShortageCounts.length > 0 && (
+        <Card variant="standard" padding={20}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600 }}>
+            Shortage Student Count by Course Offering
+          </h3>
+          <GroupedBarChart
+            data={courseShortageCounts}
+            xAxisKey="course"
+            bars={[
+              { key: 'students', name: 'Students in Shortage', color: 'var(--color-error)' }
+            ]}
+            height={220}
+          />
+        </Card>
+      )}
+
+      {/* Main Table Card */}
+      <Card variant="standard" padding={0}>
         {isLoading ? (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <LoadingSkeleton height={44} />
@@ -182,8 +288,8 @@ export function E04AttendanceShortageReportPage() {
         ) : filteredItems.length === 0 ? (
           <EmptyState
             icon={<Users size={36} />}
-            title="No students below 75% attendance"
-            description={search ? "No shortage records match your search." : "All enrolled students currently meet the minimum 75% attendance criteria."}
+            title={`No students below ${threshold}% attendance`}
+            description={search || selectedCourse ? "No records match your filters." : `All enrolled students meet the ${threshold}% attendance requirement.`}
           />
         ) : (
           <Table

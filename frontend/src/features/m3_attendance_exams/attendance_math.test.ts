@@ -1,25 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
-export function calculateAttendancePercentage(present: number, total: number): number {
-  if (total <= 0) return 100.0
-  return Math.round((present / total) * 10000) / 100
-}
-
-export function isEligibleForExam(percentage: number, threshold = 75.0): boolean {
-  return percentage >= threshold
-}
-
-export function calculateGapTo75(present: number, total: number, targetPct = 75.0): number {
-  if (total <= 0) return 0
-  const currentPct = (present / total) * 100
-  if (currentPct >= targetPct) return 0
-  // Target: (present + x) / (total + x) >= 0.75
-  // present + x >= 0.75 * total + 0.75 * x
-  // 0.25 * x >= 0.75 * total - present
-  // x >= 3 * total - 4 * present
-  const needed = 3 * total - 4 * present
-  return Math.max(0, Math.ceil(needed))
-}
+import { calculateAttendancePercentage, isEligibleForExam, calculateGapTo75 } from './utils'
+export { calculateAttendancePercentage, isEligibleForExam, calculateGapTo75 }
 
 describe('M3 Attendance Math & Eligibility Rules', () => {
   it('calculates attendance percentage rounded to two decimals', () => {

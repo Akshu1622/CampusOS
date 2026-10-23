@@ -20,7 +20,7 @@ export function A07MyCoursesPage() {
     return m
   }, [employees])
 
-  const myCourses = courses || []
+  const myCourses = (courses || []).filter(c => !c.course_code.startsWith('CS0') && !c.course_title.toLowerCase().startsWith('course '))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

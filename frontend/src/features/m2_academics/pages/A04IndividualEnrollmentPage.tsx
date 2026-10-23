@@ -29,7 +29,9 @@ export function A04IndividualEnrollmentPage() {
 
   const courseMap = React.useMemo(() => {
     const m = new Map<number, { code: string; title: string }>()
-    courses.forEach(c => m.set(c.id, { code: c.code, title: c.title }))
+    courses
+      .filter(c => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach(c => m.set(c.id, { code: c.code, title: c.title }))
     return m
   }, [courses])
 
@@ -199,7 +201,7 @@ export function A04IndividualEnrollmentPage() {
                   }}
                   options={[
                     { value: '', label: '-- Select Course Offering --' },
-                    ...offerings.map(o => {
+                    ...offerings.filter(o => courseMap.has(o.course_id)).map(o => {
                       const c = courseMap.get(o.course_id)
                       const t = termMap.get(o.term_id)
                       const seatsLeft = Math.max(0, o.capacity - o.enrolled_count)

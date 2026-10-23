@@ -1,30 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
-export interface MarksValidationResult {
-  isValid: boolean
-  error?: string
-}
-
-export function validateMarksEntry(rawVal: string, maxMarks: number): MarksValidationResult {
-  if (rawVal.trim() === '') {
-    return { isValid: true } // Empty is treated as un-entered / draft
-  }
-  const num = Number(rawVal)
-  if (isNaN(num)) {
-    return { isValid: false, error: 'Must be a valid numeric mark' }
-  }
-  if (num < 0) {
-    return { isValid: false, error: 'Marks cannot be negative' }
-  }
-  if (num > maxMarks) {
-    return { isValid: false, error: `Marks cannot exceed max marks (${maxMarks})` }
-  }
-  return { isValid: true }
-}
-
-export function canModifyResult(status: 'DRAFT' | 'PROCESSED' | 'PUBLISHED'): boolean {
-  return status !== 'PUBLISHED'
-}
+import { validateMarksEntry, canModifyResult, type MarksValidationResult } from './utils'
+export { validateMarksEntry, canModifyResult, type MarksValidationResult }
 
 describe('M3 Marks Validation & Processing Rules', () => {
   const MAX_MARKS = 100

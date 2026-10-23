@@ -89,12 +89,64 @@ def generate_demo_sql():
     sql.append("-- ==========================================")
     sql.append("-- M2: Academics")
     sql.append("-- ==========================================")
-    # 7. Courses (50)
-    for i in range(1, 51):
-        code = f"CS{i:03d}"
-        title = f"Course {i}"
-        credits = 3
-        dept_id = random.randint(1, 5)
+    # 7. Courses (50) - Real Engineering Curriculum
+    eng_courses = [
+        # User requested core subjects
+        ("CS301", "Database and Management System", 4, 1),
+        ("EE401", "Digital Signal Processing", 4, 3),
+        ("EE302", "Embedded Processing", 4, 3),
+        ("CS302", "Computer Networks", 4, 1),
+        # 5 additional engineering subjects
+        ("CS201", "Data Structures and Algorithms", 4, 1),
+        ("CS303", "Operating Systems", 4, 1),
+        ("CS304", "Theory of Computation", 3, 1),
+        ("CS305", "Software Engineering", 3, 1),
+        ("EE301", "Microprocessors and Microcontrollers", 4, 3),
+        # Additional engineering subjects for full catalog
+        ("CS202", "Computer Organization and Architecture", 4, 1),
+        ("CS401", "Artificial Intelligence and Machine Learning", 4, 1),
+        ("CS402", "Cryptography and Network Security", 3, 1),
+        ("CS403", "Compiler Design", 4, 1),
+        ("CS404", "Cloud Computing and Distributed Systems", 3, 1),
+        ("CS203", "Object Oriented Programming", 3, 1),
+        ("CS306", "Design and Analysis of Algorithms", 4, 1),
+        ("CS405", "Web Technologies and Frameworks", 3, 1),
+        ("EE201", "Digital Electronics and Logic Design", 4, 3),
+        ("EE202", "Signals and Systems", 4, 3),
+        ("EE303", "Control Systems Engineering", 4, 3),
+        ("EE304", "Power Electronics and Drives", 4, 3),
+        ("EE402", "VLSI Design and Embedded Systems", 4, 3),
+        ("EE403", "Wireless and Mobile Communication", 3, 3),
+        ("EE404", "Internet of Things (IoT) and Sensors", 3, 3),
+        ("EE305", "Electrical Machines and Transformers", 4, 3),
+        ("ME201", "Engineering Mechanics and Statics", 4, 2),
+        ("ME202", "Thermodynamics and Heat Transfer", 4, 2),
+        ("ME301", "Fluid Mechanics and Machinery", 4, 2),
+        ("ME302", "Manufacturing and Machining Science", 3, 2),
+        ("ME303", "Kinematics and Dynamics of Machines", 4, 2),
+        ("ME401", "Robotics and Industrial Automation", 3, 2),
+        ("ME402", "Automobile Engineering", 3, 2),
+        ("ME403", "Finite Element Analysis (FEA)", 4, 2),
+        ("ME404", "Refrigeration and Air Conditioning", 3, 2),
+        ("CE201", "Strength of Materials", 4, 4),
+        ("CE202", "Structural Analysis and Mechanics", 4, 4),
+        ("CE301", "Concrete Technology and Design", 4, 4),
+        ("CE302", "Geotechnical and Foundation Engineering", 4, 4),
+        ("CE303", "Surveying and Geomatics", 3, 4),
+        ("CE401", "Transportation and Highway Engineering", 3, 4),
+        ("CE402", "Environmental Engineering and Hydrology", 3, 4),
+        ("CE403", "Design of Steel Structures", 4, 4),
+        ("MA101", "Engineering Mathematics I (Calculus)", 4, 1),
+        ("MA102", "Engineering Mathematics II (Linear Algebra)", 4, 1),
+        ("MA201", "Discrete Mathematics and Graph Theory", 3, 1),
+        ("PH101", "Engineering Physics and Quantum Optics", 3, 3),
+        ("CH101", "Engineering Chemistry and Materials", 3, 2),
+        ("HS201", "Engineering Economics and Management", 3, 5),
+        ("HS202", "Professional Ethics and Human Values", 2, 5),
+        ("CS499", "Engineering Capstone Project", 6, 1),
+    ]
+
+    for i, (code, title, credits, dept_id) in enumerate(eng_courses, start=1):
         sql.append(f"INSERT INTO course (id, code, title, credits, department_id, status) VALUES ({i}, '{code}', '{title}', {credits}, {dept_id}, 'ACTIVE');")
         
     # 8. Course Offerings (50)

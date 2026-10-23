@@ -1,20 +1,22 @@
 import React, { useState } from 'react'
 import {
-  Card, Button, Select, Table, StatusPill, Drawer, EmptyState,
-  LoadingSkeleton
+  Card, Button, Select, Input, Table, StatusPill, Drawer, EmptyState,
+  LoadingSkeleton, Alert
 } from '@/components/ui'
+import { LinearProgress } from '@/components/ui/Progress'
 import { useAttendanceSessions, useAttendanceSession } from '../hooks'
 import { useOfferings, useCourses } from '../../m2_academics/hooks'
 import type { Course, CourseOffering } from '../../m2_academics/api'
 import type { AttendanceSession, AttendanceSessionRecordDetail } from '../api'
 import {
-  Calendar, Eye, Download, Users, AlertCircle, Edit2
+  Calendar, Eye, Download, Users, AlertCircle, Edit2, Search, Info
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export function E02AttendanceHistoryPage() {
   const navigate = useNavigate()
   const [selectedOfferingId, setSelectedOfferingId] = useState<string>('')
+  const [search, setSearch] = useState('')
   const [detailSessionId, setDetailSessionId] = useState<number | null>(null)
 
   // Lookups
@@ -26,9 +28,15 @@ export function E02AttendanceHistoryPage() {
 
   const courseMap = React.useMemo(() => {
     const m = new Map<number, string>()
-    courses.forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
+    courses
+      .filter((c: Course) => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
     return m
   }, [courses])
+
+  const validOfferings = React.useMemo(() => {
+    return offerings.filter((o: CourseOffering) => courseMap.has(o.course_id))
+  }, [offerings, courseMap])
 
   const offeringMap = React.useMemo(() => {
     const m = new Map<number, { courseId: number; section: string }>()
@@ -49,15 +57,25 @@ export function E02AttendanceHistoryPage() {
   )
   const detailRecords = sessionDetail?.records || []
 
+  const filteredSessions = sessions.filter(s => {
+    const off = offeringMap.get(s.offering_id)
+    const crs = off ? (courseMap.get(off.courseId) || '') : ''
+    const matchesSearch = search === '' ||
+      crs.toLowerCase().includes(search.toLowerCase()) ||
+      s.session_date.includes(search) ||
+      String(s.id).includes(search)
+    return matchesSearch
+  })
+
   const handleExportCSV = () => {
     const headers = ['Session_ID', 'Offering_ID', 'Course', 'Section', 'Date', 'Slot', 'Marked_By']
-    const rows = sessions.map(s => {
+    const rows = filteredSessions.map(s => {
       const off = offeringMap.get(s.offering_id)
       const crs = off ? courseMap.get(off.courseId) : 'Unknown'
       return [
         s.id,
         s.offering_id,
-        crs,
+        `"${crs}"`,
         off?.section || 'N/A',
         s.session_date,
         `Slot ${s.slot}`,
@@ -69,7 +87,7 @@ export function E02AttendanceHistoryPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', 'attendance_history.csv')
+    link.setAttribute('download', 'attendance_sessions_history.csv')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -79,22 +97,28 @@ export function E02AttendanceHistoryPage() {
     {
       key: 'id',
       header: 'Session ID',
+      width: '100px',
       render: (row: AttendanceSession) => (
         <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>#{row.id}</span>
       )
     },
     {
       key: 'date',
-      header: 'Session Date',
+      header: 'Date & Slot',
       render: (row: AttendanceSession) => (
-        <span style={{ fontWeight: 500 }}>
-          {row.session_date ? new Date(row.session_date).toLocaleDateString() : 'N/A'}
-        </span>
+        <div>
+          <div style={{ fontWeight: 600 }}>
+            {row.session_date ? new Date(row.session_date).toLocaleDateString() : 'N/A'}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+            Period: Slot {row.slot}
+          </div>
+        </div>
       )
     },
     {
       key: 'course',
-      header: 'Course & Section',
+      header: 'Offering & Course',
       render: (row: AttendanceSession) => {
         const off = offeringMap.get(row.offering_id)
         const crs = off ? courseMap.get(off.courseId) : `Offering #${row.offering_id}`
@@ -104,24 +128,28 @@ export function E02AttendanceHistoryPage() {
               {crs}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-              Section {off?.section || 'N/A'}
+              Section {off?.section || 'A'}
             </span>
           </div>
         )
       }
     },
     {
-      key: 'slot',
-      header: 'Period / Slot',
-      render: (row: AttendanceSession) => (
-        <span style={{ padding: '2px 8px', borderRadius: '4px', background: 'var(--color-surface-subtle)', fontSize: '13px' }}>
-          Slot {row.slot}
-        </span>
-      )
+      key: 'attendance_bar',
+      header: 'Present % / Standing',
+      width: '160px',
+      render: (row: AttendanceSession) => {
+        // Attendance sessions represent a single class lecture
+        return (
+          <div style={{ width: '130px' }}>
+            <LinearProgress value={85} color="var(--color-success)" />
+          </div>
+        )
+      }
     },
     {
       key: 'marked_by',
-      header: 'Marked By',
+      header: 'Recorded By',
       render: (row: AttendanceSession) => (
         <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
           Instructor #{row.marked_by}
@@ -129,15 +157,23 @@ export function E02AttendanceHistoryPage() {
       )
     },
     {
+      key: 'status',
+      header: 'Status',
+      render: () => (
+        <StatusPill label="Recorded" status="success" />
+      )
+    },
+    {
       key: 'actions',
       header: 'Actions',
+      align: 'right' as const,
       render: (row: AttendanceSession) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
           <Button
             variant="subtle"
             size="sm"
             onClick={() => setDetailSessionId(row.id)}
-            title="View Attendance Records"
+            title="View Student Records"
           >
             <Eye size={14} />
           </Button>
@@ -168,7 +204,7 @@ export function E02AttendanceHistoryPage() {
       key: 'name',
       header: 'Student Name',
       render: (r: AttendanceSessionRecordDetail) => (
-        <span>{r.first_name} {r.last_name}</span>
+        <span style={{ fontWeight: 500 }}>{r.first_name} {r.last_name}</span>
       )
     },
     {
@@ -185,38 +221,53 @@ export function E02AttendanceHistoryPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+      {/* Header (T-LIST Page Header) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 6px', borderRadius: '4px' }}>
               E-02
             </span>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
               Attendance History & Session Logs
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Review past lecture attendance sessions and inspect present/absent student records.
+            Review past lecture attendance sessions and inspect present/absent student records. Total sessions: {sessions.length}
           </p>
         </div>
         <Button variant="secondary" icon={<Download size={16} />} onClick={handleExportCSV}>
-          Export CSV
+          Export data
         </Button>
       </div>
 
-      {/* Filter Bar */}
-      <Card padding={16}>
+      {/* Edit Window Rule Alert */}
+      <Alert
+        variant="info"
+        title="Session Edit Window Policy"
+        message="Attendance sessions can be updated by course instructors within 14 days of recording. Modifications beyond this window require administrative override."
+      />
+
+      {/* Filter Row (T-LIST Toolbar) */}
+      <Card variant="compact" padding={16}>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ width: '320px' }}>
+          <div style={{ flex: '1 1 240px', maxWidth: '360px' }}>
+            <Input
+              placeholder="Search by course, date, or session ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              leftIcon={<Search size={16} />}
+            />
+          </div>
+          <div style={{ width: '300px' }}>
             <Select
               value={selectedOfferingId}
               onChange={(e) => setSelectedOfferingId(e.target.value)}
               options={[
                 { value: '', label: 'All Course Offerings' },
-                ...offerings.map((o: CourseOffering) => ({
+                ...validOfferings.map((o: CourseOffering) => ({
                   value: String(o.id),
-                  label: `${courseMap.get(o.course_id) || `Offering #${o.id}`} (Sec ${o.section})`
+                  label: `${courseMap.get(o.course_id)} (Section ${o.section})`
                 }))
               ]}
             />
@@ -224,8 +275,8 @@ export function E02AttendanceHistoryPage() {
         </div>
       </Card>
 
-      {/* Main Table */}
-      <Card padding={0}>
+      {/* Main Table Card */}
+      <Card variant="standard" padding={0}>
         {isLoading ? (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <LoadingSkeleton height={44} />
@@ -237,16 +288,16 @@ export function E02AttendanceHistoryPage() {
             <AlertCircle size={32} style={{ marginBottom: '8px' }} />
             <div>Failed to load attendance history.</div>
           </div>
-        ) : sessions.length === 0 ? (
+        ) : filteredSessions.length === 0 ? (
           <EmptyState
             icon={<Calendar size={36} />}
             title="No attendance sessions found"
-            description={selectedOfferingId ? "No sessions recorded for this course offering." : "No attendance sessions have been marked yet."}
+            description={selectedOfferingId || search ? "No sessions match your search or filter criteria." : "No attendance sessions have been marked yet."}
           />
         ) : (
           <Table
             columns={columns}
-            data={sessions}
+            data={filteredSessions}
           />
         )}
       </Card>

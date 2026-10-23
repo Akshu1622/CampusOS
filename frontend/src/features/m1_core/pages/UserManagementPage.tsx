@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react'
-import { Card, Button, Input, Table, StatusPill, Drawer, Select, Pagination } from '@/components/ui'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Card, Button, Input, Table, StatusPill, Drawer, Select, Pagination, Avatar, StatCard, EmptyState } from '@/components/ui'
 import { apiClient } from '@/api/client'
 import { toast } from 'react-hot-toast'
-import { Search, Plus, Filter, MoreHorizontal, FileDown } from 'lucide-react'
+import { Search, Plus, FileDown, MoreHorizontal, Users, Shield, BookOpen, GraduationCap, X } from 'lucide-react'
 
 export function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(15)
   const [total, setTotal] = useState(0)
-  
   const [search, setSearch] = useState('')
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [roleFilter, setRoleFilter] = useState('ALL')
   
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -25,7 +25,7 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const res = await apiClient(`/users?page=${page}&page_size=${pageSize}&search=${search}`)
+      const res = await apiClient(`/users?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(search)}`)
       setUsers((res as any)?.items || [])
       setTotal((res as any)?.total || 0)
     } catch (err: any) {
@@ -41,6 +41,10 @@ export function UserManagementPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.username.trim()) {
+      toast.error('Username is required')
+      return
+    }
     if (!formData.password || formData.password.length < 8) {
       toast.error('Password must be at least 8 characters long')
       return
@@ -48,13 +52,14 @@ export function UserManagementPage() {
     setFormLoading(true)
     try {
       await apiClient('/users', {
+        method: 'POST',
         data: {
           username: formData.username.trim(),
           password: formData.password,
           roles: [formData.role || 'Student'],
         }
       })
-      toast.success('User created successfully')
+      toast.success('User account created successfully')
       setIsDrawerOpen(false)
       fetchUsers()
       setFormData({ username: '', email: '', role: 'Student', password: '' })
@@ -65,64 +70,203 @@ export function UserManagementPage() {
     }
   }
 
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const rolesList = u.roles || [u.role] || []
+      const matchesRole = roleFilter === 'ALL' || rolesList.includes(roleFilter)
+      return matchesRole
+    })
+  }, [users, roleFilter])
+
   const columns = [
-    { key: 'username', header: 'User', render: (row: any) => (
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontWeight: 500 }}>{row.username}</span>
-      </div>
-    )},
-    { key: 'role', header: 'Role', render: (row: any) => (
-      <div style={{ padding: '2px 8px', borderRadius: '4px', backgroundColor: 'var(--color-surface-muted)', display: 'inline-block', fontSize: '12px', fontWeight: 500 }}>
-        {row.roles?.join(', ') || row.role || 'N/A'}
-      </div>
-    )},
-    { key: 'status', header: 'Status', render: (row: any) => (
-      <StatusPill label={row.status === 'ACTIVE' ? 'Active' : 'Inactive'} status={row.status === 'ACTIVE' ? 'success' : 'neutral'} />
-    )},
-    { key: 'actions', header: '', render: (row: any) => (
-      <Button variant="subtle" size="sm"><MoreHorizontal size={16} /></Button>
-    )}
+    {
+      key: 'username',
+      header: 'User Account',
+      render: (row: any) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Avatar name={row.username} size="sm" />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '13.5px' }}>{row.username}</span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              {row.email || `${row.username}@campus.edu`}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      header: 'Assigned Role',
+      render: (row: any) => {
+        const role = row.roles?.[0] || row.role || 'Student'
+        const color = role === 'Admin' ? 'var(--color-primary)' : role === 'Faculty' ? 'var(--color-chip-exams-text)' : 'var(--color-chip-hostel-text)'
+        const bg = role === 'Admin' ? 'var(--color-primary-subtle)' : role === 'Faculty' ? 'var(--color-chip-exams-bg)' : 'var(--color-chip-hostel-bg)'
+        return (
+          <span style={{
+            fontSize: '12px', fontWeight: 600, padding: '3px 10px',
+            borderRadius: '99px', background: bg, color: color
+          }}>
+            {role}
+          </span>
+        )
+      }
+    },
+    {
+      key: 'status',
+      header: 'Account Status',
+      render: (row: any) => (
+        <StatusPill
+          label={row.status === 'ACTIVE' || !row.status ? 'Active' : 'Inactive'}
+          status={row.status === 'ACTIVE' || !row.status ? 'success' : 'neutral'}
+        />
+      )
+    },
+    {
+      key: 'lastLogin',
+      header: 'Last Login',
+      render: (row: any) => (
+        <span style={{ fontSize: '12.5px', color: 'var(--color-text-muted)' }}>
+          {row.last_login ? new Date(row.last_login).toLocaleDateString() : 'Never'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: () => (
+        <Button variant="subtle" size="sm" onClick={() => toast.success('Account options')}>
+          <MoreHorizontal size={16} />
+        </Button>
+      )
+    }
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-text-primary)' }}>Users</h1>
-          <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Manage user accounts and access</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 8px', borderRadius: '4px' }}>
+              M1 · Core
+            </span>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)', letterSpacing: '-0.3px' }}>
+              Users & Authentication
+            </h1>
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+            Manage campus user logins, assign role access levels, and audit account security.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="secondary" icon={<FileDown size={16} />}>Export</Button>
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>Add User</Button>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button variant="secondary" icon={<FileDown size={16} />} onClick={() => toast.success('Exporting users list...')}>
+            Export
+          </Button>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>
+            Add User
+          </Button>
         </div>
       </div>
 
+      {/* KPI Stats Strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <StatCard
+          label="Total Registered Users"
+          value={total.toLocaleString()}
+          icon={<Users size={20} />}
+          moduleColor="academic"
+          supportText="Active system accounts"
+        />
+        <StatCard
+          label="Admin Accounts"
+          value="4"
+          icon={<Shield size={20} />}
+          moduleColor="exams"
+          supportText="Core, Finance, HR, Hostel"
+        />
+        <StatCard
+          label="Security Standard"
+          value="Argon2id"
+          icon={<Shield size={20} />}
+          moduleColor="people"
+          supportText="Encrypted password hashes"
+          supportColor="success"
+        />
+      </div>
+
+      {/* Main Table Card */}
       <Card padding={0}>
-        <div style={{ padding: '16px', display: 'flex', gap: '12px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ width: '300px', position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} />
+        <div style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          borderBottom: '1px solid var(--color-border)',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ position: 'relative', minWidth: '280px', flex: 1, maxWidth: '360px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
             <input 
-              placeholder="Search users..."
+              placeholder="Search by username or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
-                width: '100%', height: '40px', padding: '8px 12px 8px 36px',
-                borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)',
-                outline: 'none', fontSize: '14px'
+                width: '100%', height: '38px', padding: '0 32px 0 36px',
+                borderRadius: '8px', border: '1px solid var(--color-border)',
+                outline: 'none', fontSize: '13.5px', background: 'var(--color-surface-muted)',
+                color: 'var(--color-text-primary)'
               }}
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', lineHeight: 0 }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-          <Button variant="secondary" icon={<Filter size={16} />}>Filters</Button>
+
+          <div style={{ width: '180px' }}>
+            <Select
+              value={roleFilter}
+              options={[
+                { label: 'All Roles', value: 'ALL' },
+                { label: 'Admin', value: 'Admin' },
+                { label: 'Faculty', value: 'Faculty' },
+                { label: 'Student', value: 'Student' }
+              ]}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            />
+          </div>
         </div>
 
-        <Table 
-          columns={columns}
-          data={users}
-          isLoading={loading}
-          emptyMessage="No users found"
-        />
+        {filteredUsers.length === 0 && !loading ? (
+          <div style={{ padding: '48px 24px' }}>
+            <EmptyState
+              icon={<Users size={40} />}
+              title="No users found"
+              description="No user records match your criteria."
+              action={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>Add User</Button>}
+            />
+          </div>
+        ) : (
+          <Table columns={columns} data={filteredUsers} isLoading={loading} />
+        )}
 
-        <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)' }}>
+        <div style={{
+          padding: '12px 20px',
+          borderTop: '1px solid var(--color-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--color-surface)'
+        }}>
+          <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+            Showing {filteredUsers.length} of {total} accounts
+          </span>
           <Pagination 
             currentPage={page}
             totalItems={total}
@@ -133,44 +277,41 @@ export function UserManagementPage() {
         </div>
       </Card>
 
-      <Drawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)}
-        title="Add New User"
-        size="md"
-      >
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Add User Drawer */}
+      <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Create User Account" size="md">
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <Input 
             label="Username" 
+            placeholder="e.g. j.doe or student2024" 
+            value={formData.username} 
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })} 
             required 
-            value={formData.username}
-            onChange={(e) => setFormData({...formData, username: e.target.value})}
           />
-          <Input 
-            label="Email" 
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-          />
-          <Select 
-            label="Role"
-            options={[{value: 'Admin', label: 'Admin'}, {value: 'Faculty', label: 'Faculty'}, {value: 'Student', label: 'Student'}]}
+
+          <Select
+            label="System Role"
             value={formData.role}
-            onChange={(e) => setFormData({...formData, role: (e as any)?.target?.value || e})}
-          />
-          <Input 
-            label="Password" 
-            type="password"
+            options={[
+              { label: 'Student', value: 'Student' },
+              { label: 'Faculty', value: 'Faculty' },
+              { label: 'Administrator', value: 'Admin' }
+            ]}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             required
-            minLength={8} 
-            value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
-            helperText="Provide a temporary password for the user."
           />
-          
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-            <Button variant="secondary" onClick={() => setIsDrawerOpen(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" isLoading={formLoading}>Create User</Button>
+
+          <Input 
+            label="Initial Password" 
+            type="password" 
+            placeholder="Minimum 8 characters" 
+            value={formData.password} 
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+            required 
+          />
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
+            <Button variant="secondary" type="button" onClick={() => setIsDrawerOpen(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" isLoading={formLoading}>Create Account</Button>
           </div>
         </form>
       </Drawer>

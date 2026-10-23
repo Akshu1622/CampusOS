@@ -1,16 +1,16 @@
 import React, { useState } from 'react'
 import {
   Card, Button, Input, Select, Table, StatusPill, Drawer, EmptyState,
-  LoadingSkeleton, ConfirmationDialog
+  LoadingSkeleton, ConfirmationDialog, Alert
 } from '@/components/ui'
 import {
-  useExams, useCreateExam, useUpdateExam, useDeleteExam
+  useExams, useCreateExam, useUpdateExam, useDeleteExam, useExamRegistrations
 } from '../hooks'
 import { useOfferings, useCourses } from '../../m2_academics/hooks'
 import type { Course, CourseOffering } from '../../m2_academics/api'
 import type { Exam, ExamCreate } from '../api'
 import {
-  Plus, Calendar, Trash2, Edit2, AlertCircle, FileText
+  Plus, Calendar, Trash2, Edit2, AlertCircle, FileText, ToggleLeft, ToggleRight, CheckCircle2, Lock
 } from 'lucide-react'
 
 export function E05ExamManagementPage() {
@@ -30,6 +30,9 @@ export function E05ExamManagementPage() {
   })
   const [formError, setFormError] = useState<string | null>(null)
 
+  // Status toggle confirmation dialog
+  const [statusToggleTarget, setStatusToggleTarget] = useState<Exam | null>(null)
+
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<Exam | null>(null)
 
@@ -42,9 +45,15 @@ export function E05ExamManagementPage() {
 
   const courseMap = React.useMemo(() => {
     const m = new Map<number, string>()
-    courses.forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
+    courses
+      .filter((c: Course) => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
     return m
   }, [courses])
+
+  const validOfferings = React.useMemo(() => {
+    return offerings.filter((o: CourseOffering) => courseMap.has(o.course_id))
+  }, [offerings, courseMap])
 
   const offeringMap = React.useMemo(() => {
     const m = new Map<number, { courseId: number; section: string }>()
@@ -59,6 +68,18 @@ export function E05ExamManagementPage() {
   })
   const exams = examsData?.items || []
 
+  // Registrations query to derive counts
+  const { data: regData } = useExamRegistrations({ page_size: 500 })
+  const registrations = regData?.items || []
+
+  const regCountMap = React.useMemo(() => {
+    const map = new Map<number, number>()
+    registrations.forEach(r => {
+      map.set(r.exam_id, (map.get(r.exam_id) || 0) + 1)
+    })
+    return map
+  }, [registrations])
+
   const createMutation = useCreateExam()
   const updateMutation = useUpdateExam()
   const deleteMutation = useDeleteExam()
@@ -67,6 +88,20 @@ export function E05ExamManagementPage() {
     const matchesType = selectedType ? e.exam_type === selectedType : true
     return matchesType
   })
+
+  const getExamStatus = (exam: Exam): { label: string; status: 'info' | 'success' | 'warning' | 'neutral' } => {
+    const now = new Date()
+    const regStart = exam.reg_start_date ? new Date(exam.reg_start_date) : null
+    const regEnd = exam.reg_end_date ? new Date(exam.reg_end_date) : null
+
+    if (regEnd && now > regEnd) {
+      return { label: 'Closed', status: 'neutral' }
+    }
+    if (regStart && now >= regStart && (!regEnd || now <= regEnd)) {
+      return { label: 'Open', status: 'info' }
+    }
+    return { label: 'Draft / Upcoming', status: 'warning' }
+  }
 
   const handleOpenAdd = () => {
     setEditingExam(null)
@@ -143,17 +178,42 @@ export function E05ExamManagementPage() {
     }
   }
 
+  const handleToggleRegistration = async () => {
+    if (!statusToggleTarget) return
+    const current = getExamStatus(statusToggleTarget)
+    const isCurrentlyOpen = current.label === 'Open'
+    
+    // If open, close it by setting reg_end_date to yesterday; if closed, open it for 14 days
+    const newEndDate = isCurrentlyOpen
+      ? new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      : new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
+
+    try {
+      await updateMutation.mutateAsync({
+        id: statusToggleTarget.id,
+        data: {
+          reg_end_date: newEndDate,
+          reg_start_date: isCurrentlyOpen ? statusToggleTarget.reg_start_date : new Date().toISOString().split('T')[0]
+        }
+      })
+      setStatusToggleTarget(null)
+    } catch (err) {
+      // error handled in hook
+    }
+  }
+
   const columns = [
     {
       key: 'id',
-      header: 'ID',
+      header: 'Exam ID',
+      width: '90px',
       render: (row: Exam) => (
         <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>#{row.id}</span>
       )
     },
     {
       key: 'course',
-      header: 'Course & Section',
+      header: 'Offering & Course',
       render: (row: Exam) => {
         const off = offeringMap.get(row.offering_id)
         const crs = off ? courseMap.get(off.courseId) : `Offering #${row.offering_id}`
@@ -163,7 +223,7 @@ export function E05ExamManagementPage() {
               {crs}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-              Section {off?.section || 'N/A'}
+              Section {off?.section || 'A'}
             </span>
           </div>
         )
@@ -192,7 +252,7 @@ export function E05ExamManagementPage() {
       key: 'max_marks',
       header: 'Max Marks',
       render: (row: Exam) => (
-        <span style={{ fontWeight: 600 }}>{row.max_marks} pts</span>
+        <span className="tabular-nums" style={{ fontWeight: 600 }}>{row.max_marks} pts</span>
       )
     },
     {
@@ -206,55 +266,95 @@ export function E05ExamManagementPage() {
       )
     },
     {
+      key: 'registered',
+      header: 'Registered',
+      render: (row: Exam) => {
+        const count = regCountMap.get(row.id) || 0
+        return (
+          <span className="tabular-nums" style={{ fontWeight: 600 }}>
+            {count} student{count === 1 ? '' : 's'}
+          </span>
+        )
+      }
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row: Exam) => {
+        const { label, status } = getExamStatus(row)
+        return <StatusPill label={label} status={status} />
+      }
+    },
+    {
       key: 'actions',
       header: 'Actions',
-      render: (row: Exam) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <Button
-            variant="subtle"
-            size="sm"
-            onClick={() => handleOpenEdit(row)}
-            title="Edit Exam"
-          >
-            <Edit2 size={14} />
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => setDeleteTarget(row)}
-            title="Delete Exam"
-          >
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )
+      align: 'right' as const,
+      render: (row: Exam) => {
+        const { label } = getExamStatus(row)
+        const isOpen = label === 'Open'
+        return (
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={() => setStatusToggleTarget(row)}
+              title={isOpen ? 'Close Registration Window' : 'Open Registration Window'}
+            >
+              {isOpen ? <ToggleRight size={14} style={{ color: 'var(--color-primary)' }} /> : <ToggleLeft size={14} />}
+            </Button>
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={() => handleOpenEdit(row)}
+              title="Edit Exam"
+            >
+              <Edit2 size={14} />
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setDeleteTarget(row)}
+              title="Delete Exam"
+            >
+              <Trash2 size={14} />
+            </Button>
+          </div>
+        )
+      }
     }
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+      {/* Header (T-LIST Page Header) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 6px', borderRadius: '4px' }}>
               E-05
             </span>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Exam Management & Scheduling
+            <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+              Exam Management
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Schedule examination events, define maximum marks, and configure registration windows.
+            Schedule examination events, control registration windows, and track candidate registrations. Total exams: {exams.length}
           </p>
         </div>
         <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenAdd}>
-          Schedule Exam
+          Schedule exam
         </Button>
       </div>
 
-      {/* Filter Bar */}
-      <Card padding={16}>
+      {/* Evaluation Integrity Rule Alert */}
+      <Alert
+        variant="info"
+        title="Exam Modification Rules"
+        message="Exam dates, weightage, and maximum scores are locked once student marks entry begins or official semester results are published to preserve academic audit compliance."
+      />
+
+      {/* Filter Row */}
+      <Card variant="compact" padding={16}>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: '300px' }}>
             <Select
@@ -262,9 +362,9 @@ export function E05ExamManagementPage() {
               onChange={(e) => setSelectedOfferingId(e.target.value)}
               options={[
                 { value: '', label: 'All Course Offerings' },
-                ...offerings.map((o: CourseOffering) => ({
+                ...validOfferings.map((o: CourseOffering) => ({
                   value: String(o.id),
-                  label: `${courseMap.get(o.course_id) || `Offering #${o.id}`} (Sec ${o.section})`
+                  label: `${courseMap.get(o.course_id)} (Section ${o.section})`
                 }))
               ]}
             />
@@ -275,9 +375,9 @@ export function E05ExamManagementPage() {
               onChange={(e) => setSelectedType(e.target.value)}
               options={[
                 { value: '', label: 'All Exam Types' },
-                { value: 'QUIZ', label: 'Quiz' },
-                { value: 'MIDTERM', label: 'Midterm' },
                 { value: 'FINAL', label: 'Final Exam' },
+                { value: 'MIDTERM', label: 'Midterm Exam' },
+                { value: 'QUIZ', label: 'Quiz' },
                 { value: 'ASSIGNMENT', label: 'Assignment' },
               ]}
             />
@@ -286,7 +386,7 @@ export function E05ExamManagementPage() {
       </Card>
 
       {/* Main Table */}
-      <Card padding={0}>
+      <Card variant="standard" padding={0}>
         {isLoading ? (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <LoadingSkeleton height={44} />
@@ -302,7 +402,7 @@ export function E05ExamManagementPage() {
           <EmptyState
             icon={<FileText size={36} />}
             title="No exams scheduled"
-            description={selectedOfferingId || selectedType ? "No exams match the selected filters." : "Schedule an exam event for course offerings."}
+            description={selectedOfferingId || selectedType ? "No exams match your filters." : "Schedule an exam event for course offerings."}
             action={!selectedOfferingId && !selectedType ? (
               <Button variant="primary" onClick={handleOpenAdd}>Schedule Exam</Button>
             ) : undefined}
@@ -315,7 +415,7 @@ export function E05ExamManagementPage() {
         )}
       </Card>
 
-      {/* Drawer */}
+      {/* Schedule / Edit Drawer Form */}
       <Drawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -324,28 +424,26 @@ export function E05ExamManagementPage() {
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {formError && (
-            <div style={{ padding: '12px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-error)', fontSize: '13px' }}>
-              {formError}
-            </div>
+            <Alert variant="error" title="Validation Error" message={formError} />
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Course Offering Section *
             </label>
             <Select
               value={String(formData.offering_id)}
               disabled={!!editingExam}
               onChange={(e) => setFormData({ ...formData, offering_id: Number(e.target.value) })}
-              options={offerings.map((o: CourseOffering) => ({
+              options={validOfferings.map((o: CourseOffering) => ({
                 value: String(o.id),
-                label: `${courseMap.get(o.course_id) || `Offering #${o.id}`} (Sec ${o.section})`
+                label: `${courseMap.get(o.course_id)} (Section ${o.section})`
               }))}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Exam Type *
             </label>
             <Select
@@ -361,7 +459,7 @@ export function E05ExamManagementPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Exam Date *
             </label>
             <Input
@@ -373,7 +471,7 @@ export function E05ExamManagementPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Maximum Marks *
             </label>
             <Input
@@ -388,7 +486,7 @@ export function E05ExamManagementPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
                 Registration Opens *
               </label>
               <Input
@@ -399,7 +497,7 @@ export function E05ExamManagementPage() {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
                 Registration Closes *
               </label>
               <Input
@@ -427,6 +525,19 @@ export function E05ExamManagementPage() {
           </div>
         </form>
       </Drawer>
+
+      {/* Registration Open/Close Confirmation */}
+      <ConfirmationDialog
+        isOpen={!!statusToggleTarget}
+        title={statusToggleTarget && getExamStatus(statusToggleTarget).label === 'Open' ? 'Close Exam Registration' : 'Open Exam Registration'}
+        message={statusToggleTarget && getExamStatus(statusToggleTarget).label === 'Open'
+          ? `Are you sure you want to close registrations for Exam #${statusToggleTarget?.id}? Students will no longer be able to submit new registrations.`
+          : `Are you sure you want to open registrations for Exam #${statusToggleTarget?.id}? Eligible students with attendance ≥ 75% will be able to register.`}
+        confirmLabel={statusToggleTarget && getExamStatus(statusToggleTarget).label === 'Open' ? 'Close Window' : 'Open Window'}
+        isLoading={updateMutation.isPending}
+        onConfirm={handleToggleRegistration}
+        onCancel={() => setStatusToggleTarget(null)}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog

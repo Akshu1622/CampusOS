@@ -1,102 +1,166 @@
-import React from 'react';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
+import React from 'react'
+import { Card, Button, StatusPill } from '@/components/ui'
+import { Download, Printer, CheckCircle, ArrowLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export const PaymentConfirmationReceiptPage: React.FC = () => {
+  const navigate = useNavigate()
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="bg-green-100 text-green-700 rounded-full p-2">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '840px', margin: '0 auto' }}>
+      {/* Banner */}
+      <div style={{
+        padding: '16px 20px',
+        borderRadius: '8px',
+        background: 'var(--color-success-bg)',
+        border: '1px solid var(--color-success)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'var(--color-success)',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <CheckCircle size={20} />
           </div>
           <div>
-            <h2 className="text-green-800 font-semibold">Payment Successful</h2>
-            <p className="text-green-600 text-sm">Receipt REC-001 has been generated.</p>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-success)' }}>
+              Payment Completed Successfully
+            </h2>
+            <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+              Voucher <strong style={{ fontFamily: 'monospace' }}>REC-2026-001</strong> generated and settled into the student ledger.
+            </p>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="secondary" icon="Download">Download PDF</Button>
-          <Button variant="secondary">Print</Button>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Printer size={14} />}
+            onClick={() => window.print()}
+          >
+            Print
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Download size={14} />}
+            onClick={() => alert('Downloading authentic signed PDF...')}
+          >
+            Download PDF
+          </Button>
         </div>
       </div>
 
-      <Card className="bg-white p-12 print-friendly">
-        {/* Receipt Header */}
-        <div className="flex justify-between items-start border-b pb-8 mb-8">
+      {/* Printable Receipt Paper */}
+      <Card padding={32}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--color-border)', paddingBottom: '24px', marginBottom: '24px' }}>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">CampusOS University</h1>
-            <p className="text-gray-500 mt-1">123 Education Lane, Knowledge City</p>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, color: 'var(--color-text-primary)' }}>
+              CampusOS University
+            </h1>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+              Office of the Bursar & Financial Controller • Academic Tax Invoice
+            </p>
           </div>
-          <div className="text-right">
-            <h2 className="text-2xl text-gray-300 font-bold uppercase tracking-wider">Receipt</h2>
-            <p className="font-mono text-gray-900 mt-2">REC-001</p>
-            <p className="text-sm text-gray-500">Date: 2026-08-16</p>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              OFFICIAL RECEIPT
+            </span>
+            <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '16px', color: 'var(--color-primary)', marginTop: '4px' }}>
+              REC-2026-001
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              Date: 2026-10-23
+            </div>
           </div>
         </div>
 
-        {/* Student Details */}
-        <div className="grid grid-cols-2 gap-8 mb-8">
+        {/* Details Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginBottom: '24px' }}>
           <div>
-            <p className="text-sm text-gray-500 mb-1">Received From:</p>
-            <p className="font-semibold text-gray-900">John Doe</p>
-            <p className="text-sm text-gray-600">ID: STU2025001</p>
-            <p className="text-sm text-gray-600">B.Tech Computer Science</p>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+              Received From
+            </div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-primary)' }}>Aarav Sharma</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>Roll: CS2023-042</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>B.Tech Computer Science and Engineering</div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500 mb-1">Payment Mode:</p>
-            <p className="font-medium text-gray-900">Credit Card (**** 1234)</p>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+              Transaction Reference
+            </div>
+            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)' }}>UPI / HDFC / 9912083</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Settled: Instant Real-time</div>
+            <div style={{ marginTop: '4px' }}>
+              <StatusPill label="CLEARED & PAID" status="success" />
+            </div>
           </div>
         </div>
 
-        {/* Line Items */}
-        <table className="w-full text-left mb-8">
+        {/* Itemized Table */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
           <thead>
-            <tr className="border-b text-gray-500 text-sm">
-              <th className="pb-3 font-medium">Description</th>
-              <th className="pb-3 font-medium">Term</th>
-              <th className="pb-3 font-medium text-right">Amount</th>
+            <tr style={{ borderBottom: '2px solid var(--color-border)', textAlign: 'left', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+              <th style={{ paddingBottom: '10px' }}>Fee Head Description</th>
+              <th style={{ paddingBottom: '10px' }}>Academic Term</th>
+              <th style={{ paddingBottom: '10px', textAlign: 'right' }}>Amount (INR)</th>
             </tr>
           </thead>
-          <tbody className="text-sm">
-            <tr className="border-b">
-              <td className="py-4">Tuition Fee</td>
-              <td className="py-4 text-gray-600">Fall 2026</td>
-              <td className="py-4 text-right">₹50,000</td>
+          <tbody style={{ fontSize: '14px' }}>
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={{ padding: '12px 0' }}>Semester Tuition Fee</td>
+              <td style={{ padding: '12px 0', color: 'var(--color-text-secondary)' }}>Fall 2026</td>
+              <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600 }}>₹45,000.00</td>
             </tr>
-            <tr className="border-b">
-              <td className="py-4">Late Fee Penalty</td>
-              <td className="py-4 text-gray-600">-</td>
-              <td className="py-4 text-right">₹250</td>
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={{ padding: '12px 0' }}>Engineering Laboratory & Facilities</td>
+              <td style={{ padding: '12px 0', color: 'var(--color-text-secondary)' }}>Fall 2026</td>
+              <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600 }}>₹5,000.00</td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <td style={{ padding: '12px 0' }}>Examination Registration Surcharge</td>
+              <td style={{ padding: '12px 0', color: 'var(--color-text-secondary)' }}>Fall 2026</td>
+              <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600 }}>₹250.00</td>
             </tr>
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={2} style={{ paddingTop: '16px', fontWeight: 700, fontSize: '16px' }}>Total Amount Paid</td>
+              <td style={{ paddingTop: '16px', textAlign: 'right', fontWeight: 800, fontSize: '18px', color: 'var(--color-primary)' }}>
+                ₹50,250.00
+              </td>
+            </tr>
+          </tfoot>
         </table>
 
-        {/* Totals */}
-        <div className="flex justify-end">
-          <div className="w-64 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
-              <span>₹50,250</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg border-t pt-3">
-              <span>Total Paid</span>
-              <span>₹50,250</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 pt-8 border-t text-center text-sm text-gray-500">
-          <p>This is a computer-generated receipt and does not require a signature.</p>
+        {/* Footer Note */}
+        <div style={{
+          fontSize: '12px',
+          color: 'var(--color-text-muted)',
+          borderTop: '1px solid var(--color-border)',
+          paddingTop: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>Authorized Computer-Generated Tax Document. No physical signature required.</div>
+          <Button variant="subtle" size="sm" leftIcon={<ArrowLeft size={13} />} onClick={() => navigate('/student/fees')}>
+            Return to Fees
+          </Button>
         </div>
       </Card>
-
-      <div className="text-center pt-4">
-        <a href="/student/fees" className="text-amber-600 hover:underline font-medium">← Back to My Fees</a>
-      </div>
     </div>
-  );
-};
+  )
+}

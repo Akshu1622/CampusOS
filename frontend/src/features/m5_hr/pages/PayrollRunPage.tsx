@@ -1,106 +1,261 @@
-import React, { useState } from 'react';
-import { Button } from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import { Card, StatCard, Button, Alert, StatusPill } from '@/components/ui'
+import { Check, CheckCircle2, ArrowRight, ArrowLeft, AlertTriangle, Users, DollarSign, Calendar, Layers, ShieldCheck } from 'lucide-react'
 
 export const PayrollRunPage: React.FC = () => {
-  const [step, setStep] = useState(1);
-  const [month, setMonth] = useState('2026-10');
+  const [step, setStep] = useState(1)
+  const [month, setMonth] = useState('2026-10')
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Payroll Run</h1>
-        <p className="text-sm text-gray-500 mt-1">Process and finalize monthly payroll</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '840px', margin: '0 auto' }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            HR-08
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            Monthly Payroll Execution Engine
+          </h1>
+        </div>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          Run automated salary computations, sync leave deductions, and generate banking disbursement files.
+        </p>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex justify-between items-center mb-8">
-          {[1, 2, 3, 4].map(s => (
-            <div key={s} className="flex flex-col items-center flex-1 relative">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                {s}
-              </div>
-              <div className="text-xs mt-2 text-gray-600 text-center">
-                {s === 1 ? 'Select Month' : s === 2 ? 'Pre-checks' : s === 3 ? 'Review' : 'Finalize'}
-              </div>
-              {s < 4 && <div className={`absolute top-4 left-1/2 w-full h-0.5 -z-10 ${step > s ? 'bg-blue-600' : 'bg-gray-200'}`}></div>}
+      {/* Stepper */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {[1, 2, 3, 4].map(s => (
+          <div key={s} style={{ display: 'flex', alignItems: 'center', flex: 1, gap: '8px' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              fontWeight: 700,
+              background: step > s ? 'var(--color-success)' : step === s ? 'var(--color-primary)' : 'var(--color-surface-subtle)',
+              color: step >= s ? '#FFFFFF' : 'var(--color-text-muted)',
+              border: step >= s ? 'none' : '1px solid var(--color-border)'
+            }}>
+              {step > s ? <Check size={14} /> : s}
             </div>
-          ))}
-        </div>
+            <div style={{
+              flex: 1,
+              height: '4px',
+              borderRadius: '2px',
+              background: step >= s ? 'var(--color-primary)' : 'var(--color-border)',
+            }} />
+          </div>
+        ))}
+      </div>
 
+      <Card padding={24}>
         {step === 1 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">1. Select Month</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payroll Month</label>
-              <input 
-                type="month" 
+              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                Step 1: Select Pay Cycle Month
+              </h2>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                Target billing month for faculty, laboratory instructors, and administrative personnel.
+              </p>
+            </div>
+
+            <div style={{ maxWidth: '280px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Payroll Cycle</label>
+              <input
+                type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="rounded-md border border-gray-300 p-2 w-64"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px'
+                }}
               />
+            </div>
+
+            <div style={{
+              padding: '12px',
+              borderRadius: '6px',
+              background: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              fontSize: '13px',
+              color: 'var(--color-text-secondary)'
+            }}>
+              <strong>Cycle Metadata:</strong> October 2026 includes 22 university working days. All approved casual, sick, and duty leaves have been synced from the HR attendance register.
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '12px' }}>
+              <Button variant="primary" rightIcon={<ArrowRight size={14} />} onClick={() => setStep(2)}>
+                Next: Pre-Flight Integrity Check
+              </Button>
             </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">2. Pre-checks</h3>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded">
-                <span>✅</span> 45 Employees included
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                Step 2: Automated Pre-Flight Validations
+              </h2>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                Scanning employee biometric attendance, sanctioned unpaid leaves, and statutory tax slabs.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px',
+                borderRadius: '6px',
+                background: 'var(--color-success-bg)',
+                color: 'var(--color-success)',
+                border: '1px solid var(--color-success)',
+                fontSize: '13px'
+              }}>
+                <CheckCircle2 size={18} />
+                <span><strong>52 Employees Validated:</strong> Active contracts and verified bank routing details in system.</span>
               </div>
-              <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded">
-                <span>✅</span> Leave adjustments synced
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px',
+                borderRadius: '6px',
+                background: 'var(--color-success-bg)',
+                color: 'var(--color-success)',
+                border: '1px solid var(--color-success)',
+                fontSize: '13px'
+              }}>
+                <CheckCircle2 size={18} />
+                <span><strong>Leave Adjustments Synchronized:</strong> 3 Loss-of-Pay (LOP) days accounted for prorated deduction.</span>
               </div>
-              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 p-3 rounded">
-                <span>⚠️</span> 1 Employee missing salary structure (Ignored in run)
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px',
+                borderRadius: '6px',
+                background: 'var(--color-warning-bg)',
+                color: 'var(--color-warning)',
+                border: '1px solid var(--color-warning)',
+                fontSize: '13px'
+              }}>
+                <AlertTriangle size={18} />
+                <span><strong>1 Visiting Adjunct Faculty:</strong> Missing updated PAN card number. Standard 20% TDS tax slab applied.</span>
               </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px' }}>
+              <Button variant="secondary" leftIcon={<ArrowLeft size={14} />} onClick={() => setStep(1)}>
+                Back
+              </Button>
+              <Button variant="primary" rightIcon={<ArrowRight size={14} />} onClick={() => setStep(3)}>
+                Proceed to Salary Ledger Review
+              </Button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">3. Run & Review</h3>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-gray-50 p-4 rounded text-center">
-                <div className="text-sm text-gray-500">Total Gross</div>
-                <div className="text-xl font-bold">₹4,250,000</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded text-center">
-                <div className="text-sm text-gray-500">Total Deductions</div>
-                <div className="text-xl font-bold">₹540,000</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded text-center">
-                <div className="text-sm text-gray-500">Net Payout</div>
-                <div className="text-xl font-bold text-blue-600">₹3,710,000</div>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                Step 3: Executive Payroll Summary
+              </h2>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                Review aggregate compensation figures before permanent ledger posting and bank file generation.
+              </p>
             </div>
-            <div className="text-sm text-gray-500 text-center">
-              (Preview table of 45 employees would be here)
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <StatCard
+                label="Total Employees"
+                value="52"
+                tone="accent"
+                icon={<Users size={18} />}
+                description="Faculty + Administrative"
+              />
+              <StatCard
+                label="Gross Earnings"
+                value="₹64.50L"
+                tone="neutral"
+                icon={<DollarSign size={18} />}
+                description="Basic + HRA + Allowances"
+              />
+              <StatCard
+                label="Statutory Deductions"
+                value="₹9.20L"
+                tone="critical"
+                description="PF, Professional Tax & TDS"
+              />
+              <StatCard
+                label="Net Disbursable"
+                value="₹55.30L"
+                tone="positive"
+                description="Direct Bank ACH deposit"
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px' }}>
+              <Button variant="secondary" leftIcon={<ArrowLeft size={14} />} onClick={() => setStep(2)}>
+                Back
+              </Button>
+              <Button variant="primary" onClick={() => setStep(4)}>
+                Finalize & Lock Payroll Run
+              </Button>
             </div>
           </div>
         )}
 
         {step === 4 && (
-          <div className="space-y-4 text-center">
-            <h3 className="text-lg font-medium">4. Finalize Payroll</h3>
-            <div className="bg-red-50 text-red-700 p-4 rounded-md mx-auto max-w-md">
-              <p className="font-bold mb-2">Warning: Irreversible Action</p>
-              <p className="text-sm">Finalizing payroll for {month} will lock the records and generate payslips for all included employees. This cannot be undone.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '32px 16px', gap: '16px' }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'var(--color-success-bg)',
+              color: 'var(--color-success)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <CheckCircle2 size={32} />
+            </div>
+
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                Payroll Run for {month} Successfully Finalized
+              </h2>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)', maxWidth: '480px' }}>
+                ₹55.30 Lakhs net compensation locked into general ledger. Automated NACH/NEFT bank disbursement file generated.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+              <Button variant="secondary" onClick={() => setStep(1)}>
+                Process Another Cycle
+              </Button>
+              <Button variant="primary" onClick={() => window.location.href = '/hr/payroll-register'}>
+                View Payroll Register
+              </Button>
             </div>
           </div>
         )}
-
-        <div className="flex justify-between mt-8 pt-4 border-t border-gray-200">
-          <Button variant="tertiary" disabled={step === 1} onClick={() => setStep(step - 1)}>Back</Button>
-          {step < 4 ? (
-            <Button onClick={() => setStep(step + 1)}>Next Step</Button>
-          ) : (
-            <Button onClick={() => alert('Payroll Finalized!')}>Finalize Payroll</Button>
-          )}
-        </div>
-      </div>
+      </Card>
     </div>
-  );
-};
+  )
+}

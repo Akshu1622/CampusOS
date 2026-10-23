@@ -7,7 +7,23 @@ import { ErrorState } from '../../../components/ui/ErrorState'
 import { Link } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { StatusPill } from '../../../components/ui/StatusPill'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer
+} from 'recharts'
+import {
+  Award, BookOpen, Calendar, CreditCard, Home,
+  CheckSquare, ArrowRight, TrendingUp, AlertTriangle, Clock
+} from 'lucide-react'
+
+const QUICK_LINKS = [
+  { label: 'My Results', icon: <Award size={17} />, href: '/student/results', color: '#7C3AED' },
+  { label: 'My Courses', icon: <BookOpen size={17} />, href: '/student/courses', color: '#3B4FE0' },
+  { label: 'Attendance', icon: <Calendar size={17} />, href: '/student/attendance', color: '#E11D48' },
+  { label: 'Fees & Dues', icon: <CreditCard size={17} />, href: '/student/fees', color: '#D97706' },
+  { label: 'Exam Reg.', icon: <CheckSquare size={17} />, href: '/student/exams/registration', color: '#16A34A' },
+  { label: 'Hostel', icon: <Home size={17} />, href: '/student/hostel', color: '#0D9488' },
+]
 
 export function StudentDashboardPage() {
   const { data, isLoading, error, refetch } = useQuery({
@@ -17,10 +33,14 @@ export function StudentDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Student Dashboard</h1>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <LoadingSkeleton key={i} height={120} />)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="skeleton" style={{ height: '104px', borderRadius: '20px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '16px' }}>
+          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton" style={{ height: '112px' }} />)}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="skeleton" style={{ height: '260px' }} />
+          <div className="skeleton" style={{ height: '260px' }} />
         </div>
       </div>
     )
@@ -30,160 +50,256 @@ export function StudentDashboardPage() {
     return <ErrorState message="Failed to load dashboard data" onRetry={refetch} />
   }
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const hasDues = (data.total_outstanding_dues || 0) > 0
+  const cgpa = data.current_cgpa !== undefined ? Number(data.current_cgpa).toFixed(2) : 'N/A'
+  const lowAttendanceCount = data.low_attendance_courses || 0
+
+  const cgpaTrendData = data.cgpa_trend?.map((item: any, idx: number) => ({
+    term: item.term || item.term_label || `Sem ${idx + 1}`,
+    gpa: Number(item.sgpa || item.gpa || item.value || 0),
+  })) || []
+
+  const todaySchedule = data.today_schedule || data.classes_today || []
+  const examRegistrations = data.exam_registrations || []
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-text-primary">My Dashboard</h2>
-      <div className="bg-primary-50 p-6 rounded-lg shadow-sm border border-primary-100 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-primary-900">Hello, Student</h1>
-          <p className="text-primary-700 mt-1">
-            You have {data.today_schedule?.length || 0} classes today.
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Greeting banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #e0f5f3 0%, #e8eeff 100%)',
+        border: '1px solid #d5dbfb',
+        borderRadius: '20px',
+        padding: '28px 32px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '24px',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{ position: 'absolute', right: '-30px', top: '-30px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(13,148,136,0.06)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-secondary)', margin: '0 0 6px', letterSpacing: '-0.3px' }}>
+            {greeting} 👋
+          </h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+            Cumulative CGPA <strong style={{ color: 'var(--color-primary)' }}>{cgpa}</strong>
+            {' · '}
+            <span style={{ color: lowAttendanceCount > 0 ? 'var(--color-error)' : 'var(--color-success)' }}>
+              {lowAttendanceCount > 0 ? `${lowAttendanceCount} course(s) below 75% attendance` : 'Attendance on track (all ≥ 75%)'}
+            </span>
+            {hasDues && (
+              <>
+                {' · '}
+                <span style={{ color: 'var(--color-error)', fontWeight: 600 }}>
+                  ₹{Number(data.total_outstanding_dues).toLocaleString()} due
+                </span>
+              </>
+            )}
           </p>
         </div>
-        {data.total_outstanding_dues > 0 && (
-          <div className="flex gap-4 items-center">
-            <span className="text-danger-600 font-semibold">₹{data.total_outstanding_dues.toLocaleString()} due</span>
-            <Link to="/student/pay">
-              <Button variant="danger" size="sm">Pay Now</Button>
-            </Link>
-          </div>
-        )}
+        <Link to={hasDues ? '/student/fees' : '/student/results'} style={{ textDecoration: 'none', flexShrink: 0 }}>
+          <Button variant={hasDues ? 'danger' : 'primary'}>
+            {hasDues ? 'Pay dues' : 'View results'}
+          </Button>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* KPI strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '16px' }}>
         <StatCard
           label="Current CGPA"
-          value={data.current_cgpa !== undefined ? data.current_cgpa.toFixed(2) : 'N/A'}
-          icon={<div className="w-3 h-3 rounded-full bg-blue-500" />}
+          value={cgpa}
+          icon={<Award size={20} />}
+          moduleColor="academic"
+          supportText="Academic standing"
+          onClick={() => {}}
         />
         <StatCard
-          label="Enrolled Courses"
-          value={data.total_enrolled_courses}
-          icon={<div className="w-3 h-3 rounded-full bg-violet-500" />}
+          label="Courses enrolled"
+          value={data.total_enrolled_courses || 0}
+          icon={<BookOpen size={20} />}
+          moduleColor="people"
+          supportText="Active this term"
         />
         <StatCard
-          label="Hostel Room"
-          value={data.hostel_status || 'Not Allocated'}
-          icon={<div className="w-3 h-3 rounded-full bg-teal-500" />}
+          label="Low attendance"
+          value={lowAttendanceCount}
+          icon={<AlertTriangle size={20} />}
+          moduleColor="alerts"
+          supportText={lowAttendanceCount > 0 ? 'Courses below 75%' : 'All courses eligible'}
+          supportColor={lowAttendanceCount > 0 ? 'error' : 'success'}
         />
         <StatCard
-          label="Low Attendance"
-          value={data.low_attendance_courses}
-          icon={<div className={`w-3 h-3 rounded-full ${data.low_attendance_courses > 0 ? 'bg-danger-500' : 'bg-success-500'}`} />}
+          label="Outstanding dues"
+          value={data.total_outstanding_dues > 0 ? `₹${Number(data.total_outstanding_dues).toLocaleString()}` : '₹0'}
+          icon={<CreditCard size={20} />}
+          moduleColor="finance"
+          supportText={data.total_outstanding_dues > 0 ? 'Payment required' : 'No dues'}
+          supportColor={data.total_outstanding_dues > 0 ? 'error' : 'success'}
+        />
+        <StatCard
+          label="Hostel status"
+          value={data.hostel_status || 'Not allocated'}
+          icon={<Home size={20} />}
+          moduleColor="hostel"
+          supportText="Campus room"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
-          <Card>
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800">Today's Schedule</h2>
-              <Link to="/student/academics/schedule" className="text-sm text-primary-600 hover:underline">View full schedule</Link>
+      {/* Main content row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+        {/* CGPA Trend Chart */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Academic Performance</h3>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>Semester-wise SGPA progress</p>
             </div>
-            <div className="p-0">
-              <ul className="divide-y">
-                {data.today_schedule?.map((session: any) => (
-                  <li key={session.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                    <div>
-                      <div className="font-medium text-gray-900">{session.time_slot}</div>
-                      <div className="text-sm text-gray-600">{session.room}</div>
+            <Link to="/student/results" style={{ fontSize: '13px', color: 'var(--color-primary)', textDecoration: 'none' }}>
+              Full grade card →
+            </Link>
+          </div>
+          {cgpaTrendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={cgpaTrendData} margin={{ top: 8, right: 12, bottom: 4, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="term" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(v: any) => [`${v}`, 'SGPA']}
+                  contentStyle={{ fontSize: '13px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                />
+                <Line type="monotone" dataKey="gpa" stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 4, fill: 'var(--color-primary)' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '13px', background: 'var(--color-surface-muted)', borderRadius: '8px' }}>
+              Grade history will appear here once results are published
+            </div>
+          )}
+        </Card>
+
+        {/* Today's Schedule */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Today's classes</h3>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+            <Link to="/student/attendance" style={{ fontSize: '13px', color: 'var(--color-primary)', textDecoration: 'none' }}>
+              Attendance →
+            </Link>
+          </div>
+          {todaySchedule.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {todaySchedule.map((item: any, i: number) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '10px 12px', borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)'
+                }}>
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '8px',
+                    background: 'var(--color-chip-academic-bg)', color: 'var(--color-chip-academic-text)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <BookOpen size={15} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                      {item.course_title || item.course || 'Engineering Subject'}
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium text-gray-900">{session.course_name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{session.faculty_name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                      {item.slot || item.time || 'Period 1'} · {item.room || 'Room 301'}
                     </div>
-                  </li>
-                ))}
-                {(!data.today_schedule || data.today_schedule.length === 0) && (
-                  <li className="p-8 text-center text-gray-500">No classes scheduled for today</li>
-                )}
-              </ul>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="p-4 border-b">
-              <h2 className="font-semibold text-gray-800">Academic Progress</h2>
-            </div>
-            <div className="p-4 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.cgpa_trend || []}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="term" />
-                  <YAxis domain={[0, 10]} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="cgpa" name="CGPA" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="sgpa" name="SGPA" stroke="#8B5CF6" strokeWidth={2} strokeDasharray="5 5" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-          <Card>
-            <div className="p-4 border-b">
-              <h2 className="font-semibold text-gray-800">Alerts & Actions</h2>
-            </div>
-            <div className="p-4 space-y-4">
-              {data.total_outstanding_dues > 0 && (
-                <div className="flex items-start p-3 bg-danger-50 rounded-lg border border-danger-100">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-danger-800">Unpaid Fees</h3>
-                    <p className="text-xs text-danger-700 mt-1">You have ₹{data.total_outstanding_dues.toLocaleString()} in unpaid fees.</p>
                   </div>
-                  <Link to="/student/pay">
-                    <Button variant="danger" size="sm">Pay</Button>
-                  </Link>
+                  <StatusPill label={item.status || 'Scheduled'} status="info" />
                 </div>
-              )}
-              
-              {data.pending_exams > 0 && (
-                <div className="flex items-start p-3 bg-warning-50 rounded-lg border border-warning-100">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-warning-800">Exam Registration</h3>
-                    <p className="text-xs text-warning-700 mt-1">{data.pending_exams} upcoming exams require registration.</p>
-                  </div>
-                  <Link to="/student/academics/exams">
-                    <Button variant="secondary" size="sm" className="bg-white">Register</Button>
-                  </Link>
-                </div>
-              )}
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px', background: 'var(--color-surface-muted)', borderRadius: '8px' }}>
+              No classes scheduled for today
+            </div>
+          )}
+        </Card>
+      </div>
 
-              {data.low_attendance_courses > 0 && (
-                <div className="flex items-start p-3 bg-amber-50 rounded-lg border border-amber-100">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-amber-800">Low Attendance</h3>
-                    <p className="text-xs text-amber-700 mt-1">You are below 75% attendance in {data.low_attendance_courses} courses.</p>
+      {/* Quick access + exam registration */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        {/* Quick links */}
+        <Card>
+          <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>Quick access</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' }}>
+            {QUICK_LINKS.map((ql, i) => (
+              <Link key={i} to={ql.href} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', padding: '16px 8px', borderRadius: '10px',
+                  border: '1px solid var(--color-border)', textAlign: 'center',
+                  transition: 'all 120ms', cursor: 'pointer'
+                }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLDivElement).style.borderColor = ql.color
+                    ;(e.currentTarget as HTMLDivElement).style.background = `${ql.color}10`
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)'
+                    ;(e.currentTarget as HTMLDivElement).style.background = ''
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: `${ql.color}18`, color: ql.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {ql.icon}
                   </div>
-                  <Link to="/student/academics/attendance">
-                    <Button variant="secondary" size="sm" className="bg-white">View</Button>
-                  </Link>
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>{ql.label}</span>
                 </div>
-              )}
-              
-              {data.total_outstanding_dues === 0 && data.pending_exams === 0 && data.low_attendance_courses === 0 && (
-                <div className="p-4 text-center">
-                  <StatusPill status="success" label="All clear" />
-                  <p className="text-sm text-gray-500 mt-2">You have no pending alerts.</p>
-                </div>
-              )}
-            </div>
-          </Card>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
-          <Card>
-            <div className="p-4 border-b">
-              <h2 className="font-semibold text-gray-800">Quick Links</h2>
+        {/* Exam registration preview */}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Exam registration</h3>
+            <Link to="/student/exams/registration" style={{ fontSize: '13px', color: 'var(--color-primary)', textDecoration: 'none' }}>Open →</Link>
+          </div>
+          {examRegistrations.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {examRegistrations.slice(0, 4).map((e: any, i: number) => {
+                const isEligible = e.eligible ?? (e.status === 'REGISTERED' || e.attendance_pct >= 75)
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 10px', borderRadius: '7px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)'
+                  }}>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>
+                      {e.course_code || e.course_title || e.course || 'Course'}
+                    </span>
+                    <StatusPill
+                      label={isEligible ? 'Eligible' : 'Ineligible'}
+                      status={isEligible ? 'success' : 'error'}
+                    />
+                  </div>
+                )
+              })}
             </div>
-            <div className="p-2">
-              <Link to="/student/academics/courses" className="block p-3 text-sm text-gray-700 hover:bg-gray-50 rounded">My Courses</Link>
-              <Link to="/student/academics/attendance" className="block p-3 text-sm text-gray-700 hover:bg-gray-50 rounded">Attendance Details</Link>
-              <Link to="/student/academics/exams" className="block p-3 text-sm text-gray-700 hover:bg-gray-50 rounded">Exam Results</Link>
-              <Link to="/student/pay" className="block p-3 text-sm text-gray-700 hover:bg-gray-50 rounded">Fee Payments</Link>
-              <Link to="/student/hostel" className="block p-3 text-sm text-gray-700 hover:bg-gray-50 rounded">Hostel Details</Link>
+          ) : (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+              {data.pending_exams > 0 ? `${data.pending_exams} exam(s) available for registration` : 'No upcoming exam windows'}
             </div>
-          </Card>
-        </div>
+          )}
+        </Card>
       </div>
     </div>
   )

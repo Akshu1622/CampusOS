@@ -1,6 +1,7 @@
 import React from 'react'
-import { Card, Table, type Column, Progress } from '@/components/ui'
+import { Card, StatCard, Table, type Column, Progress, StatusPill } from '@/components/ui'
 import { useOccupancy } from '../hooks'
+import { Bed, Users, ShieldAlert, CheckCircle, Home } from 'lucide-react'
 
 export function S03HostelOccupancyDashboardPage() {
   const { data: occupancy = [], isLoading } = useOccupancy()
@@ -11,96 +12,197 @@ export function S03HostelOccupancyDashboardPage() {
   const overallPct = totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0
 
   const columns: Column<any>[] = [
-    { header: 'Hostel Name', key: 'hostel_name', render: (o) => <span className="font-medium text-gray-900">{o.hostel_name}</span> },
-    { header: 'Type', key: 'gender_block' },
-    { header: 'Total Beds', key: 'total_capacity' },
-    { header: 'Occupied', key: 'occupied_beds' },
-    { header: 'Available', key: 'available_beds' },
-    { 
-      header: 'Occupancy %', 
-      key: 'occupancy_pct', 
+    {
+      header: 'Hostel Name',
+      key: 'hostel_name',
       render: (o) => (
-        <div className="w-32">
-          <div className="flex justify-between text-xs mb-1">
-            <span>{Math.round(o.occupancy_pct || 0)}%</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            background: 'var(--color-chip-hostel-bg)',
+            color: 'var(--color-chip-hostel-text)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Home size={14} />
           </div>
-          <Progress value={o.occupancy_pct || 0} variant={(o.occupancy_pct || 0) >= 95 ? 'danger' : 'primary'} size="sm" />
-          {(o.occupancy_pct || 0) >= 95 && <div className="text-[10px] text-red-600 mt-1 font-medium">Critical Threshold</div>}
+          <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{o.hostel_name}</span>
         </div>
-      ) 
+      )
+    },
+    {
+      header: 'Gender Block',
+      key: 'gender_block',
+      render: (o) => (
+        <span style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          padding: '2px 8px',
+          borderRadius: '4px',
+          background: 'var(--color-surface-subtle)',
+          color: 'var(--color-text-secondary)',
+          border: '1px solid var(--color-border)'
+        }}>
+          {o.gender_block}
+        </span>
+      )
+    },
+    {
+      header: 'Total Beds',
+      key: 'total_capacity',
+      render: (o) => <span style={{ fontWeight: 600 }}>{o.total_capacity}</span>
+    },
+    {
+      header: 'Occupied',
+      key: 'occupied_beds',
+      render: (o) => <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{o.occupied_beds}</span>
+    },
+    {
+      header: 'Available',
+      key: 'available_beds',
+      render: (o) => (
+        <span style={{ fontWeight: 600, color: o.available_beds > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+          {o.available_beds}
+        </span>
+      )
+    },
+    {
+      header: 'Occupancy Rate',
+      key: 'occupancy_pct',
+      render: (o) => {
+        const pct = Math.round(o.occupancy_pct || 0)
+        return (
+          <div style={{ width: '140px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+              <span style={{ fontWeight: 600, color: pct >= 95 ? 'var(--color-error)' : 'var(--color-text-primary)' }}>
+                {pct}%
+              </span>
+              {pct >= 95 && (
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-error)' }}>
+                  FULL
+                </span>
+              )}
+            </div>
+            <Progress value={pct} variant={pct >= 95 ? 'danger' : 'primary'} size="sm" />
+          </div>
+        )
+      }
     }
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Hostel Occupancy</h1>
-          <p className="text-sm text-gray-500 mt-1">Real-time occupancy metrics across all campus hostels.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            HOS-03
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            Hostel Occupancy & Bed Allocation Analytics
+          </h1>
         </div>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          Real-time bed utilization, block capacities, and accommodation vacancy monitoring across all halls of residence.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <div className="text-sm text-gray-500">Total Bed Capacity</div>
-          <div className="text-3xl font-bold mt-2">{totalCapacity}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-gray-500">Currently Occupied</div>
-          <div className="text-3xl font-bold mt-2 text-primary-600">{totalOccupied}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-gray-500">Beds Available</div>
-          <div className="text-3xl font-bold mt-2 text-green-600">{totalAvailable}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-gray-500">Overall Occupancy</div>
-          <div className="text-3xl font-bold mt-2">{overallPct}%</div>
-          <Progress value={overallPct} className="mt-2" />
-        </Card>
+      {/* StatCards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <StatCard
+          label="Total Bed Capacity"
+          value={totalCapacity}
+          tone="neutral"
+          icon={<Bed size={18} />}
+          description="Across all hostels"
+        />
+        <StatCard
+          label="Currently Occupied"
+          value={totalOccupied}
+          tone="accent"
+          icon={<Users size={18} />}
+          description="Residents assigned"
+        />
+        <StatCard
+          label="Available Vacancies"
+          value={totalAvailable}
+          tone="positive"
+          icon={<CheckCircle size={18} />}
+          description="Ready for allotment"
+        />
+        <StatCard
+          label="Overall Campus Occupancy"
+          value={`${overallPct}%`}
+          tone={overallPct >= 90 ? 'warning' : 'positive'}
+          description="Aggregate density"
+        />
       </div>
 
-      <Card title="Occupancy Details by Hostel" padding="none">
-        <Table 
-          data={occupancy} 
-          columns={columns} 
+      {/* Table Card */}
+      <Card padding={0}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            Residence Hall Roster
+          </h3>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Fall 2026 Academic Term</span>
+        </div>
+        <Table
+          data={occupancy}
+          columns={columns}
           keyExtractor={(o) => o.hostel_id.toString()}
           isLoading={isLoading}
           emptyMessage="No hostel occupancy data available."
         />
       </Card>
 
-      <Card title="Occupancy Chart">
-        <div className="h-64 flex items-end gap-6 px-4 pb-8 pt-4 border-b border-l border-gray-200">
-          {occupancy.map(o => (
-            <div key={o.hostel_id} className="flex-1 flex flex-col justify-end items-center group relative">
-              <div className="absolute -top-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                {o.hostel_name}: {o.occupied_beds} / {o.total_capacity} beds
-              </div>
-              <div className="w-full flex flex-col justify-end items-center h-full">
-                {/* Available space */}
-                <div 
-                  className="w-16 bg-gray-200 rounded-t-md transition-all duration-500 flex items-center justify-center text-xs text-gray-500 overflow-hidden" 
-                  style={{ height: `${((o.available_beds / o.total_capacity) || 0) * 100}%` }}
-                >
-                  {o.available_beds > 0 && o.available_beds}
+      {/* Visual Density Chart */}
+      <Card padding={24}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+          Hall Capacity Distribution & Fill Levels
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          {occupancy.map(o => {
+            const pct = Math.round(o.occupancy_pct || 0)
+            const isCritical = pct >= 95
+            return (
+              <div
+                key={o.hostel_id}
+                style={{
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isCritical ? 'var(--color-error)' : 'var(--color-border)'}`,
+                  background: isCritical ? 'var(--color-error-bg)' : 'var(--color-surface-subtle)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{o.hostel_name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{o.gender_block} BLOCK</div>
+                  </div>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: isCritical ? 'var(--color-error)' : 'var(--color-primary)'
+                  }}>
+                    {pct}%
+                  </span>
                 </div>
-                {/* Occupied space */}
-                <div 
-                  className={`w-16 ${o.occupancy_pct && o.occupancy_pct >= 95 ? 'bg-red-500' : 'bg-primary-500'} transition-all duration-500 flex items-center justify-center text-xs text-white overflow-hidden`}
-                  style={{ height: `${(o.occupancy_pct || 0)}%` }}
-                >
-                  {o.occupied_beds > 0 && o.occupied_beds}
+
+                <Progress value={pct} variant={isCritical ? 'danger' : 'primary'} size="sm" />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  <span>Occupied: <strong>{o.occupied_beds}</strong></span>
+                  <span>Available: <strong style={{ color: o.available_beds > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>{o.available_beds}</strong></span>
                 </div>
               </div>
-              <div className="mt-2 text-xs text-gray-600 font-medium rotate-45 origin-left w-full truncate">{o.hostel_name}</div>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-4 justify-center mt-8 text-sm text-gray-500">
-          <div className="flex items-center gap-2"><div className="w-3 h-3 bg-primary-500 rounded-sm"></div> Occupied</div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> Critical (\u003e95%)</div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 bg-gray-200 rounded-sm"></div> Available</div>
+            )
+          })}
         </div>
       </Card>
     </div>

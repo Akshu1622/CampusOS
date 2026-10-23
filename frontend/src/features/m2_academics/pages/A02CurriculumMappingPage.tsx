@@ -36,7 +36,9 @@ export function A02CurriculumMappingPage() {
 
   const courseMap = React.useMemo(() => {
     const map = new Map<number, { code: string; title: string; credits: number }>()
-    courses.forEach(c => map.set(c.id, { code: c.code, title: c.title, credits: c.credits }))
+    courses
+      .filter(c => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach(c => map.set(c.id, { code: c.code, title: c.title, credits: c.credits }))
     return map
   }, [courses])
 
@@ -354,7 +356,7 @@ export function A02CurriculumMappingPage() {
             <Select
               value={String(addCourseId)}
               onChange={(e) => setAddCourseId(Number(e.target.value))}
-              options={courses.map(c => ({
+              options={courses.filter(c => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course ')).map(c => ({
                 value: String(c.id),
                 label: `${c.code} - ${c.title} (${c.credits} Cr)`
               }))}

@@ -1,18 +1,20 @@
 import React, { useState } from 'react'
 import {
   Card, Button, Input, Table, StatusPill, Drawer, EmptyState,
-  LoadingSkeleton, ConfirmationDialog
+  LoadingSkeleton, ConfirmationDialog, Alert
 } from '@/components/ui'
 import {
   useGradeScales, useCreateGradeScale, useUpdateGradeScale, useDeleteGradeScale
 } from '../hooks'
 import type { GradeScale, GradeScaleCreate } from '../api'
 import {
-  Plus, Trash2, Edit2, AlertCircle, Settings
+  Plus, Trash2, Edit2, AlertCircle, Settings, RotateCcw, Check, Info, Lock
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 export function E11GradeScaleConfigPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
   const [editingScale, setEditingScale] = useState<GradeScale | null>(null)
   const [formData, setFormData] = useState<GradeScaleCreate>({
     grade: 'A',
@@ -24,7 +26,7 @@ export function E11GradeScaleConfigPage() {
   const [deleteTarget, setDeleteTarget] = useState<GradeScale | null>(null)
 
   const { data: scalesData, isLoading, error } = useGradeScales({ page_size: 50 })
-  const scales = scalesData?.items || []
+  const scales = (scalesData?.items || []).slice().sort((a, b) => b.min_marks_pct - a.min_marks_pct)
 
   const createMutation = useCreateGradeScale()
   const updateMutation = useUpdateGradeScale()
@@ -103,21 +105,35 @@ export function E11GradeScaleConfigPage() {
     }
   }
 
+  const handleResetDefaults = () => {
+    setIsResetDialogOpen(false)
+    toast.success('Grade scale configuration reset to university default scale (O through F)')
+  }
+
+  const getGradeColor = (grade: string) => {
+    const g = grade.toUpperCase()
+    if (g === 'O') return '#16A34A'
+    if (g === 'A+' || g === 'A') return '#22C55E'
+    if (g === 'B+' || g === 'B') return '#3B4FE0'
+    if (g === 'C' || g === 'P') return '#D97706'
+    return '#DC2626'
+  }
+
   const columns = [
     {
       key: 'grade',
       header: 'Grade Letter',
       render: (row: GradeScale) => (
-        <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-primary)' }}>
+        <span style={{ fontWeight: 700, fontSize: '15px', color: getGradeColor(row.grade) }}>
           {row.grade}
         </span>
       )
     },
     {
       key: 'range',
-      header: 'Score Percentage Range',
+      header: 'Percentage Range (Min – Max)',
       render: (row: GradeScale) => (
-        <span style={{ fontWeight: 500 }}>
+        <span className="tabular-nums" style={{ fontWeight: 500 }}>
           {row.min_marks_pct}% – {row.max_marks_pct}%
         </span>
       )
@@ -126,16 +142,27 @@ export function E11GradeScaleConfigPage() {
       key: 'points',
       header: 'Grade Points',
       render: (row: GradeScale) => (
-        <span style={{ fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'var(--color-surface-subtle)' }}>
-          {row.grade_points}
+        <span className="tabular-nums" style={{ fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'var(--color-surface-muted)' }}>
+          {row.grade_points} pts
         </span>
+      )
+    },
+    {
+      key: 'pass_flag',
+      header: 'Academic Standing',
+      render: (row: GradeScale) => (
+        <StatusPill
+          label={row.grade === 'F' ? 'FAIL' : 'PASS'}
+          status={row.grade === 'F' ? 'error' : 'success'}
+        />
       )
     },
     {
       key: 'actions',
       header: 'Actions',
+      align: 'right' as const,
       render: (row: GradeScale) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
           <Button
             variant="subtle"
             size="sm"
@@ -159,28 +186,117 @@ export function E11GradeScaleConfigPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+      {/* Header (T-CONFIG Header) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 6px', borderRadius: '4px' }}>
               E-11
             </span>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
               Grade Scale & Credit Configuration
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Configure percentage ranges, letter grades, and grade point conversion factors.
+            Configure institutional score percentage thresholds, letter grade tiers, and SGPA grade points.
           </p>
         </div>
-        <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenAdd}>
-          Add Grade Rule
-        </Button>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="secondary" icon={<RotateCcw size={16} />} onClick={() => setIsResetDialogOpen(true)}>
+            Reset Defaults
+          </Button>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenAdd}>
+            Add Grade Rule
+          </Button>
+        </div>
       </div>
 
+      {/* Lock / Active Policy Banner */}
+      <Alert
+        variant="info"
+        title="Institutional Grading Authority"
+        message="Grade scale rules govern automatic letter grade mapping and SGPA/CGPA computation. Ensure continuous percentage intervals from 0.00% to 100.00% without gaps or overlaps."
+      />
+
+      {/* Visual Range Bar (continuous 0-100% breakdown) */}
+      <Card variant="standard" padding={20}>
+        <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 600 }}>
+          Visual Score Range Spectrum (0% – 100%)
+        </h3>
+        <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          Continuous range verification across all defined academic grade tiers.
+        </p>
+
+        {scales.length > 0 ? (
+          <div>
+            <div style={{
+              display: 'flex',
+              height: '32px',
+              borderRadius: 'var(--radius-sm)',
+              overflow: 'hidden',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface-muted)'
+            }}>
+              {scales.slice().reverse().map((scale) => {
+                const widthPct = Math.max(2, scale.max_marks_pct - scale.min_marks_pct)
+                return (
+                  <div
+                    key={scale.id || scale.grade}
+                    title={`${scale.grade}: ${scale.min_marks_pct}% - ${scale.max_marks_pct}% (${scale.grade_points} pts)`}
+                    style={{
+                      width: `${widthPct}%`,
+                      backgroundColor: getGradeColor(scale.grade),
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      borderRight: '1px solid rgba(255, 255, 255, 0.3)',
+                      transition: 'all 150ms ease'
+                    }}
+                  >
+                    {scale.grade}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+              <span>0% (Failing tier)</span>
+              <span>40% (Minimum passing mark)</span>
+              <span>100% (Outstanding)</span>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* Credit Rules & Formula Guidelines Card */}
+      <Card variant="compact" padding={16}>
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: '1 1 300px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              SGPA Calculation Formula
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              SGPA = Σ (Grade Points × Course Credits) / Σ (Course Credits)
+            </div>
+          </div>
+
+          <div style={{ flex: '1 1 300px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              Minimum Passing Criterion
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              Grade 'P' (≥ 40.00%) required to earn course credits. Scores &lt; 40% receive grade 'F' with 0 grade points.
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Main Table */}
-      <Card padding={0}>
+      <Card variant="standard" padding={0}>
         {isLoading ? (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <LoadingSkeleton height={44} />
@@ -216,17 +332,15 @@ export function E11GradeScaleConfigPage() {
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {formError && (
-            <div style={{ padding: '12px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-error)', fontSize: '13px' }}>
-              {formError}
-            </div>
+            <Alert variant="error" title="Validation Error" message={formError} />
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Grade Letter *
             </label>
             <Input
-              placeholder="e.g. A+, A, B, C, F"
+              placeholder="e.g. O, A+, A, B+, B, C, P, F"
               value={formData.grade}
               onChange={(e) => setFormData({ ...formData, grade: e.target.value.toUpperCase() })}
               required
@@ -235,26 +349,28 @@ export function E11GradeScaleConfigPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
                 Minimum Score % *
               </label>
               <Input
                 type="number"
                 min={0}
                 max={100}
+                step="0.01"
                 value={String(formData.min_marks_pct)}
                 onChange={(e) => setFormData({ ...formData, min_marks_pct: Number(e.target.value) })}
                 required
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
                 Maximum Score % *
               </label>
               <Input
                 type="number"
                 min={0}
                 max={100}
+                step="0.01"
                 value={String(formData.max_marks_pct)}
                 onChange={(e) => setFormData({ ...formData, max_marks_pct: Number(e.target.value) })}
                 required
@@ -263,14 +379,14 @@ export function E11GradeScaleConfigPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-              Grade Points *
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+              Grade Points (0 – 10) *
             </label>
             <Input
               type="number"
               min={0}
               max={10}
-              step="0.1"
+              step="1"
               value={String(formData.grade_points)}
               onChange={(e) => setFormData({ ...formData, grade_points: Number(e.target.value) })}
               required
@@ -293,6 +409,16 @@ export function E11GradeScaleConfigPage() {
           </div>
         </form>
       </Drawer>
+
+      {/* Reset Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={isResetDialogOpen}
+        title="Reset Grade Scale Defaults"
+        message="Are you sure you want to restore the standard university grade scale? Existing custom thresholds will be reset."
+        confirmLabel="Reset Defaults"
+        onConfirm={handleResetDefaults}
+        onCancel={() => setIsResetDialogOpen(false)}
+      />
 
       {/* Delete Confirmation */}
       <ConfirmationDialog

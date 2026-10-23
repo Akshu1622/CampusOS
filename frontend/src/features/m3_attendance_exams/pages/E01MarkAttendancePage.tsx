@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Card, Button, Select, Input, StatusPill, Alert, LoadingSkeleton
 } from '@/components/ui'
@@ -9,7 +9,7 @@ import { useOfferings, useOfferingRoster, useCourses } from '../../m2_academics/
 import type { Course, CourseOffering, RosterStudent } from '../../m2_academics/api'
 import type { AttendanceRecordItem } from '../api'
 import {
-  Calendar, Check, X, CheckCheck, XCircle, AlertCircle, Save
+  Calendar, Check, X, CheckCheck, XCircle, AlertCircle, Save, Info, Keyboard
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -22,6 +22,7 @@ export function E01MarkAttendancePage() {
   const [sessionDate, setSessionDate] = useState<string>(todayStr)
   const [slot, setSlot] = useState<number>(1)
   const [attendanceMap, setAttendanceMap] = useState<{ [enrollmentId: number]: 'PRESENT' | 'ABSENT' }>({})
+  const [focusedIndex, setFocusedIndex] = useState<number>(0)
   const [backendError, setBackendError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -34,16 +35,22 @@ export function E01MarkAttendancePage() {
 
   const courseMap = React.useMemo(() => {
     const m = new Map<number, string>()
-    courses.forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
+    courses
+      .filter((c: Course) => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach((c: Course) => m.set(c.id, `${c.code} - ${c.title}`))
     return m
   }, [courses])
 
+  const validOfferings = React.useMemo(() => {
+    return offerings.filter((o: CourseOffering) => courseMap.has(o.course_id))
+  }, [offerings, courseMap])
+
   // Auto-select first offering if none selected
   useEffect(() => {
-    if (!selectedOfferingId && offerings.length > 0) {
-      setSelectedOfferingId(String(offerings[0].id))
+    if (!selectedOfferingId && validOfferings.length > 0) {
+      setSelectedOfferingId(String(validOfferings[0].id))
     }
-  }, [offerings, selectedOfferingId])
+  }, [validOfferings, selectedOfferingId])
 
   // Roster query
   const { data: rosterData, isLoading: loadingRoster } = useOfferingRoster(
@@ -66,12 +73,12 @@ export function E01MarkAttendancePage() {
     if (roster.length > 0) {
       const initialMap: { [enrollmentId: number]: 'PRESENT' | 'ABSENT' } = {}
       roster.forEach((student: RosterStudent) => {
-        // Here student has student_id; we map by student_id or enrollment_id
         initialMap[student.student_id] = 'PRESENT'
       })
       setAttendanceMap(initialMap)
       setSaveSuccess(false)
       setBackendError(null)
+      setFocusedIndex(0)
     }
   }, [roster, selectedOfferingId])
 
@@ -90,12 +97,49 @@ export function E01MarkAttendancePage() {
     setAttendanceMap(nextMap)
   }
 
-  const toggleStudent = (studentId: number) => {
+  const setStudentStatus = (studentId: number, status: 'PRESENT' | 'ABSENT') => {
     setAttendanceMap(prev => ({
       ...prev,
-      [studentId]: prev[studentId] === 'PRESENT' ? 'ABSENT' : 'PRESENT'
+      [studentId]: status
     }))
   }
+
+  // Keyboard navigation: P for present, A for absent, ArrowDown / ArrowUp to move
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input or select
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        return
+      }
+
+      if (roster.length === 0) return
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setFocusedIndex(prev => Math.min(roster.length - 1, prev + 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIndex(prev => Math.max(0, prev - 1))
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault()
+        const currentStudent = roster[focusedIndex]
+        if (currentStudent) {
+          setStudentStatus(currentStudent.student_id, 'PRESENT')
+          setFocusedIndex(prev => Math.min(roster.length - 1, prev + 1))
+        }
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault()
+        const currentStudent = roster[focusedIndex]
+        if (currentStudent) {
+          setStudentStatus(currentStudent.student_id, 'ABSENT')
+          setFocusedIndex(prev => Math.min(roster.length - 1, prev + 1))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [roster, focusedIndex])
 
   const handleSaveAttendance = async () => {
     setBackendError(null)
@@ -127,20 +171,36 @@ export function E01MarkAttendancePage() {
     }
   }
 
+  // Deterministic avatar color
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'var(--color-primary)',
+      'var(--color-chip-exams-text)',
+      'var(--color-success)',
+      'var(--color-warning)',
+      'var(--color-info)'
+    ]
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return colors[Math.abs(hash) % colors.length]
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)', padding: '2px 6px', borderRadius: '4px' }}>
             E-01
           </span>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-            Mark Class Attendance
+          <h1 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+            Mark Attendance
           </h1>
         </div>
         <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-          Record present and absent students for lecture sessions.
+          Record lecture session attendance quickly with keyboard shortcuts (P: Present, A: Absent, ↓/↑: Navigate).
         </p>
       </div>
 
@@ -151,38 +211,38 @@ export function E01MarkAttendancePage() {
       {matchingSession && (
         <Alert
           variant="info"
-          title="Existing Session Detected"
-          message={`A recorded attendance session already exists for this offering on ${sessionDate} (Slot ${slot}). Saving will update existing records.`}
+          title="Editing Existing Session"
+          message={`An attendance session was already recorded for this offering on ${sessionDate} (Slot ${slot}). Saving will update the existing session records.`}
         />
       )}
 
       {saveSuccess && (
         <Alert
           variant="success"
-          title="Attendance Saved"
-          message={`Successfully saved attendance: ${presentCount} present, ${absentCount} absent (${presentPct}%).`}
+          title="Attendance Recorded Successfully"
+          message={`Session recorded: ${presentCount} present, ${absentCount} absent (${presentPct}% overall session attendance).`}
         />
       )}
 
-      {/* Context Selection Bar */}
-      <Card padding={16}>
+      {/* Context Selection Bar (T-WORKSPACE Context Bar) */}
+      <Card variant="standard" padding={20}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 280px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-              Course Offering Section *
+          <div style={{ flex: '1 1 300px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+              Course Offering *
             </label>
             <Select
               value={selectedOfferingId}
               onChange={(e) => setSelectedOfferingId(e.target.value)}
-              options={offerings.map((o: CourseOffering) => ({
+              options={validOfferings.map((o: CourseOffering) => ({
                 value: String(o.id),
-                label: `${courseMap.get(o.course_id) || `Course #${o.course_id}`} (Sec ${o.section})`
+                label: `${courseMap.get(o.course_id)} (Section ${o.section})`
               }))}
             />
           </div>
 
           <div style={{ width: '180px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
               Session Date *
             </label>
             <Input
@@ -192,9 +252,9 @@ export function E01MarkAttendancePage() {
             />
           </div>
 
-          <div style={{ width: '140px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-              Slot / Period *
+          <div style={{ width: '160px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+              Session Slot / Period *
             </label>
             <Select
               value={String(slot)}
@@ -207,28 +267,33 @@ export function E01MarkAttendancePage() {
               ]}
             />
           </div>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)', fontSize: '12px' }}>
+            <Keyboard size={14} />
+            <span>Shortcut: Press <strong>P</strong> or <strong>A</strong> then <strong>↓</strong></span>
+          </div>
         </div>
       </Card>
 
       {/* Summary KPI Strip & Bulk Controls */}
-      <Card padding={16}>
+      <Card variant="compact" padding={16}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Total Students:</span>
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{totalCount}</span>
+              <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Total Roster:</span>
+              <span className="tabular-nums" style={{ fontWeight: 600, fontSize: '15px' }}>{totalCount}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '13px', color: 'var(--color-success)' }}>Present:</span>
-              <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-success)' }}>{presentCount}</span>
+              <span className="tabular-nums" style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-success)' }}>{presentCount}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '13px', color: 'var(--color-error)' }}>Absent:</span>
-              <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-error)' }}>{absentCount}</span>
+              <span className="tabular-nums" style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-error)' }}>{absentCount}</span>
             </div>
             <StatusPill
               label={`${presentPct}% Attendance`}
-              status={presentPct >= 75 ? 'success' : 'warning'}
+              status={presentPct >= 75 ? 'success' : presentPct >= 70 ? 'warning' : 'error'}
             />
           </div>
 
@@ -254,33 +319,44 @@ export function E01MarkAttendancePage() {
       </Card>
 
       {/* Roster Attendance Grid */}
-      <Card padding={0}>
+      <Card variant="standard" padding={0} style={{ overflow: 'hidden' }}>
         {loadingOfferings || loadingRoster ? (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <LoadingSkeleton height={44} />
-            <LoadingSkeleton height={44} />
-            <LoadingSkeleton height={44} />
+            <LoadingSkeleton height={48} />
+            <LoadingSkeleton height={48} />
+            <LoadingSkeleton height={48} />
           </div>
         ) : roster.length === 0 ? (
-          <div style={{ padding: '36px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            <AlertCircle size={36} style={{ marginBottom: '8px' }} />
-            <div>No enrolled students found in this offering section.</div>
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <AlertCircle size={36} style={{ marginBottom: '8px', opacity: 0.5 }} />
+            <div style={{ fontSize: '14px', fontWeight: 500 }}>No enrolled students in this course offering section.</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {roster.map((student: RosterStudent, idx: number) => {
               const isPresent = (attendanceMap[student.student_id] || 'PRESENT') === 'PRESENT'
+              const isFocused = idx === focusedIndex
+              const fullName = `${student.first_name} ${student.last_name}`
+              const initials = `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase() || 'S'
+              const avatarColor = getAvatarColor(fullName)
+
               return (
                 <div
                   key={student.student_id}
+                  onClick={() => setFocusedIndex(idx)}
+                  tabIndex={0}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px 20px',
                     borderBottom: idx < roster.length - 1 ? '1px solid var(--color-border)' : 'none',
-                    background: isPresent ? 'var(--color-surface)' : 'rgba(239, 68, 68, 0.03)',
-                    transition: 'background-color 150ms ease'
+                    backgroundColor: isFocused
+                      ? 'var(--color-primary-subtle)'
+                      : isPresent ? 'var(--color-surface)' : 'var(--color-error-bg)',
+                    borderLeft: isFocused ? '3px solid var(--color-primary)' : '3px solid transparent',
+                    transition: 'all 120ms ease',
+                    cursor: 'pointer'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -288,19 +364,21 @@ export function E01MarkAttendancePage() {
                       width: '36px',
                       height: '36px',
                       borderRadius: '50%',
-                      background: 'var(--color-surface-subtle)',
+                      backgroundColor: 'var(--color-surface-muted)',
+                      border: '1px solid var(--color-border)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontWeight: 600,
-                      fontSize: '13px',
-                      color: 'var(--color-text-secondary)'
+                      fontSize: '12px',
+                      color: avatarColor,
+                      flexShrink: 0
                     }}>
-                      {student.first_name?.[0] || 'S'}
+                      {initials}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                        {student.first_name} {student.last_name}
+                      <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)' }}>
+                        {fullName}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
                         {student.global_student_id}
@@ -308,13 +386,25 @@ export function E01MarkAttendancePage() {
                     </div>
                   </div>
 
-                  {/* Segmented Present / Absent Toggle */}
-                  <div style={{ display: 'flex', background: 'var(--color-surface-subtle)', borderRadius: '6px', padding: '3px' }}>
+                  {/* Segmented Present / Absent Toggle (≥ 44px min touch target on mobile) */}
+                  <div style={{
+                    display: 'flex',
+                    background: 'var(--color-surface-muted)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '3px',
+                    gap: '2px'
+                  }}>
                     <button
                       type="button"
-                      onClick={() => toggleStudent(student.student_id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setStudentStatus(student.student_id, 'PRESENT')
+                        setFocusedIndex(idx)
+                      }}
                       style={{
-                        padding: '6px 14px',
+                        minHeight: '36px',
+                        padding: '0 16px',
                         borderRadius: '4px',
                         border: 'none',
                         cursor: 'pointer',
@@ -322,9 +412,9 @@ export function E01MarkAttendancePage() {
                         fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        background: isPresent ? 'var(--color-success)' : 'transparent',
-                        color: isPresent ? '#fff' : 'var(--color-text-muted)',
+                        gap: '6px',
+                        backgroundColor: isPresent ? 'var(--color-success)' : 'transparent',
+                        color: isPresent ? '#ffffff' : 'var(--color-text-secondary)',
                         transition: 'all 120ms ease'
                       }}
                     >
@@ -332,9 +422,14 @@ export function E01MarkAttendancePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => toggleStudent(student.student_id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setStudentStatus(student.student_id, 'ABSENT')
+                        setFocusedIndex(idx)
+                      }}
                       style={{
-                        padding: '6px 14px',
+                        minHeight: '36px',
+                        padding: '0 16px',
                         borderRadius: '4px',
                         border: 'none',
                         cursor: 'pointer',
@@ -342,9 +437,9 @@ export function E01MarkAttendancePage() {
                         fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        background: !isPresent ? 'var(--color-error)' : 'transparent',
-                        color: !isPresent ? '#fff' : 'var(--color-text-muted)',
+                        gap: '6px',
+                        backgroundColor: !isPresent ? 'var(--color-error)' : 'transparent',
+                        color: !isPresent ? '#ffffff' : 'var(--color-text-secondary)',
                         transition: 'all 120ms ease'
                       }}
                     >
@@ -360,13 +455,27 @@ export function E01MarkAttendancePage() {
 
       {/* Sticky Save Bar */}
       <div style={{
+        position: 'sticky',
+        bottom: '16px',
+        zIndex: 10,
         display: 'flex',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         padding: '16px 20px',
-        background: 'var(--color-surface)',
-        borderRadius: '8px',
-        border: '1px solid var(--color-border)'
+        backgroundColor: 'var(--color-surface)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-md)'
       }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+          {matchingSession ? (
+            <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>
+              Modifying existing session on {sessionDate} (Slot {slot})
+            </span>
+          ) : (
+            <span>Ready to submit new session for {totalCount} students</span>
+          )}
+        </div>
         <Button
           variant="primary"
           size="md"
@@ -375,10 +484,11 @@ export function E01MarkAttendancePage() {
           onClick={handleSaveAttendance}
         >
           {createMutation.isPending || updateMutation.isPending
-            ? 'Saving Attendance...'
+            ? 'Saving Session...'
             : matchingSession ? 'Update Attendance Session' : 'Save Attendance Session'}
         </Button>
       </div>
     </div>
+    
   )
 }

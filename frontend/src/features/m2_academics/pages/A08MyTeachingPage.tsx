@@ -16,7 +16,7 @@ export function A08MyTeachingPage() {
   const [rosterSearch, setRosterSearch] = useState('')
 
   const { data: offerings, isLoading, error } = useMyTeaching()
-  const teachingOfferings = offerings || []
+  const teachingOfferings = (offerings || []).filter(o => !o.course_code.startsWith('CS0') && !o.course_title.toLowerCase().startsWith('course '))
 
   // Roster query for selected offering
   const { data: rosterData, isLoading: loadingRoster } = useOfferingRoster(

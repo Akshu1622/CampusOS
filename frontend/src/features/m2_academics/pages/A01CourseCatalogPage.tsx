@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-  Card, Button, Input, Table, StatusPill, Drawer, EmptyState,
+  Card, StatCard, Button, Input, Table, StatusPill, Drawer, EmptyState,
   LoadingSkeleton, ConfirmationDialog, Select
 } from '@/components/ui'
 import {
@@ -46,6 +46,7 @@ export function A01CourseCatalogPage() {
   const courses = data?.items || []
 
   const filteredCourses = courses.filter(c => {
+    if (c.code.startsWith('CS0') || c.title.toLowerCase().startsWith('course ')) return false
     const matchesSearch =
       c.code.toLowerCase().includes(search.toLowerCase()) ||
       c.title.toLowerCase().includes(search.toLowerCase())

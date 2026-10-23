@@ -74,7 +74,9 @@ export function A03CourseOfferingsPage() {
   // Mappings
   const courseMap = React.useMemo(() => {
     const m = new Map<number, { code: string; title: string }>()
-    courses.forEach(c => m.set(c.id, { code: c.code, title: c.title }))
+    courses
+      .filter(c => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course '))
+      .forEach(c => m.set(c.id, { code: c.code, title: c.title }))
     return m
   }, [courses])
 
@@ -429,7 +431,7 @@ export function A03CourseOfferingsPage() {
               value={String(formData.course_id)}
               disabled={!!editingOffering}
               onChange={(e) => setFormData({ ...formData, course_id: Number(e.target.value) })}
-              options={courses.map(c => ({ value: String(c.id), label: `${c.code} - ${c.title}` }))}
+              options={courses.filter(c => !c.code.startsWith('CS0') && !c.title.toLowerCase().startsWith('course ')).map(c => ({ value: String(c.id), label: `${c.code} - ${c.title}` }))}
             />
           </div>
 
