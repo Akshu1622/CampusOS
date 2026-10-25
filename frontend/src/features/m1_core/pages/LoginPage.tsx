@@ -345,23 +345,29 @@ export function LoginPage() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              size="lg"
-              isLoading={isSubmitting}
-              style={{
-                marginTop: '4px',
-                width: '100%',
-                background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-                boxShadow: '0 4px 14px rgba(37,99,235,0.28)',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '15px',
-                letterSpacing: '0.01em'
-              }}
-            >
-              Sign in to CampusOS
-            </Button>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '4px' }}>
+              <Button
+                type="submit"
+                size="md"
+                isLoading={isSubmitting}
+                style={{
+                  width: 'fit-content',
+                  padding: '9px 24px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  color: '#FFFFFF',
+                  boxShadow: '0 2px 8px rgba(37,99,235,0.25)',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  letterSpacing: '0.01em',
+                  transition: 'all 150ms ease'
+                }}
+              >
+                Sign in to CampusOS
+              </Button>
+            </div>
           </form>
 
           {/* Divider */}
