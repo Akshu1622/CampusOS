@@ -40,19 +40,21 @@ def get_report(
         
     return analytics_service.get_report(db, report_key, filters, page, size, export_csv)
 
-@router.get("/audit-logs", response_model=PaginatedResponse, summary="Get unified audit logs")
+@router.get("/audit-logs", summary="Get unified audit logs", description="Unified audit trail across general and fee ledgers. Export to CSV via export_csv=true.")
 def get_audit_logs(
     request: Request,
     page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
+    size: int = Query(25, ge=1, le=100),
+    export_csv: bool = Query(False),
     db: Session = Depends(get_db),
     user: CurrentUser = Depends(require_role(["Admin"]))
-):
+) -> Any:
     filters = dict(request.query_params)
     filters.pop("page", None)
     filters.pop("size", None)
+    filters.pop("export_csv", None)
     
-    return analytics_service.get_audit_logs(db, filters, page, size)
+    return analytics_service.get_audit_logs(db, filters, page, size, export_csv=export_csv)
 
 @router.get("/integrity/checks", response_model=List[IntegrityCheckResponse], summary="Run and get integrity checks")
 def run_integrity_checks(

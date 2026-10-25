@@ -38,8 +38,10 @@ class AnalyticsService:
             "size": size
         }
 
-    def get_audit_logs(self, db: Session, filters: Dict[str, Any], page: int, size: int):
-        data, total = self.repository.get_audit_logs(db, filters, page, size)
+    def get_audit_logs(self, db: Session, filters: Dict[str, Any], page: int, size: int, export_csv: bool = False):
+        data, total = self.repository.get_audit_logs(db, filters, page, size, export=export_csv)
+        if export_csv:
+            return self._generate_csv(data, "audit_logs")
         return {
             "data": data,
             "total": total,

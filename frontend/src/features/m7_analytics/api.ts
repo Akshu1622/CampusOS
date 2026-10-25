@@ -119,5 +119,18 @@ export const analyticsApi = {
     document.body.appendChild(link)
     link.click()
     link.remove()
+  },
+
+  downloadAuditLogsCsv: async (params: Record<string, any> = {}) => {
+    const blob = await apiClient<Blob>('/analytics/audit-logs', {
+      params: { ...params, export_csv: true }
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'system_audit_logs.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
   }
 }
