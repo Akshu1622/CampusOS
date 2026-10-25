@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 
 export interface PaginatedResponse<T> {
   data: T[]
+  items?: T[]
   total: number
   page: number
   size: number
@@ -70,6 +71,7 @@ export interface StudentDashboardResponse {
 export interface AuditLogResponse {
   source: string
   log_id: number
+  id?: number
   entity_name: string
   entity_id: string
   action: string
@@ -77,12 +79,14 @@ export interface AuditLogResponse {
   after_state?: string
   actor?: string
   timestamp: string
+  diff?: any
 }
 
 // Integrity Checks
 export interface IntegrityCheckResponse {
   module: string
   check_name: string
+  description?: string
   status: 'PASS' | 'WARN' | 'FAIL'
   affected_count: number
   sample_keys?: string
@@ -112,6 +116,19 @@ export const analyticsApi = {
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', `${reportKey}_export.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  },
+
+  downloadAuditLogsCsv: async (params: Record<string, any> = {}) => {
+    const blob = await apiClient<Blob>('/analytics/audit-logs', {
+      params: { ...params, export_csv: true }
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'system_audit_logs.csv')
     document.body.appendChild(link)
     link.click()
     link.remove()

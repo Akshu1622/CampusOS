@@ -28,9 +28,6 @@ export function E10MyResultsPage() {
     ? semesterResults[semesterResults.length - 1].sgpa
     : 0
 
-  // Total credits across all published results
-  const totalCreditsEarned = semesterResults.reduce((sum, term) => sum + term.total_credits, 0)
-
   // SGPA trend data for line chart
   const sgpaTrendData = semesterResults.map((s, idx) => ({
     term: s.term_label || `Sem ${idx + 1}`,
@@ -105,14 +102,6 @@ export function E10MyResultsPage() {
           moduleColor="exams"
           supportText="Recent completed term"
           supportColor="neutral"
-        />
-        <StatCard
-          label="Credits Earned"
-          value={`${totalCreditsEarned} Cr`}
-          icon={<CheckCircle2 size={20} />}
-          moduleColor="people"
-          supportText="Across all semesters"
-          supportColor="success"
         />
       </div>
 

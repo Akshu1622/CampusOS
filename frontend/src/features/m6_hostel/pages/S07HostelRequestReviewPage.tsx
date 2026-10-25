@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Card, Table, type Column, StatusPill, Button, Modal, Input, Select } from '@/components/ui'
+import { Card, StatCard, Table, type Column, StatusPill, Button, Drawer, Input } from '@/components/ui'
 import { useAllRequests, useDecideRequest } from '../hooks'
 import { getStudents } from '../api'
 import { useQuery } from '@tanstack/react-query'
 import type { HostelRequest, RequestStatus } from '../api'
 import { useNavigate } from 'react-router-dom'
+import { Home, Clock, CheckCircle, X, Check, ShieldAlert, User, FileText } from 'lucide-react'
 
 export function S07HostelRequestReviewPage() {
   const [activeTab, setActiveTab] = useState<RequestStatus>('PENDING')
@@ -28,12 +29,10 @@ export function S07HostelRequestReviewPage() {
       {
         onSuccess: () => {
           const reqType = selectedReq.request_type
-          const sId = selectedReq.student_id
           setSelectedReq(null)
           setRemark('')
           
           if (status === 'APPROVED' && reqType !== 'VACATE') {
-            // Suggest allocating
             if (window.confirm('Request approved. Do you want to proceed to allocate a room now?')) {
               navigate('/admin/hostel/room-allocation')
             }
@@ -50,130 +49,234 @@ export function S07HostelRequestReviewPage() {
       render: (r) => {
         const student = students.find((s: any) => s.id === r.student_id)
         return (
-          <div>
-            <div className="font-medium text-gray-900">{student?.name || `ID: ${r.student_id}`}</div>
-            <div className="text-xs text-gray-500">{student?.university_id}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: 'var(--color-chip-people-bg)',
+              color: 'var(--color-chip-people-text)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: '11px'
+            }}>
+              {(student?.name || 'S').charAt(0)}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{student?.name || `Student #${r.student_id}`}</div>
+              <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{student?.university_id}</div>
+            </div>
           </div>
         )
       } 
     },
-    { header: 'Type', key: 'request_type', render: (r) => <span className="capitalize">{r.request_type.replace('_', ' ')}</span> },
-    { header: 'Details', key: 'details', render: (r) => <div className="max-w-xs truncate text-sm">{r.details || '-'}</div> },
-    { 
-      header: 'Status', 
-      key: 'status', 
+    {
+      header: 'Request Nature',
+      key: 'request_type',
       render: (r) => (
-        <StatusPill 
-          label={r.status} 
-          status={r.status === 'APPROVED' ? 'success' : r.status === 'REJECTED' ? 'error' : 'warning'} 
-        />
-      ) 
+        <span style={{ fontWeight: 600 }}>{r.request_type.replace('_', ' ')}</span>
+      )
     },
     {
-      header: 'Action',
-      key: 'actions',
+      header: 'Submission Date',
+      key: 'created_at',
+      render: (r) => <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span>
+    },
+    {
+      header: 'Applicant Remarks',
+      key: 'details',
       render: (r) => (
-        <Button variant="tertiary" size="sm" onClick={() => { setSelectedReq(r); setRemark(r.remark || '') }}>
+        <div style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          {r.details || '—'}
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      key: 'status',
+      render: (r) => (
+        <StatusPill
+          label={r.status}
+          status={r.status === 'APPROVED' ? 'success' : r.status === 'PENDING' ? 'warning' : 'error'}
+        />
+      )
+    },
+    {
+      header: 'Actions',
+      key: 'id',
+      render: (r) => (
+        <Button variant="subtle" size="sm" onClick={() => { setSelectedReq(r); setRemark(r.reviewer_notes || r.remark || '') }}>
           Review
         </Button>
       )
     }
   ]
 
-  const isLoading = reqLoading || stuLoading
-  const studentInfo = selectedReq ? students.find((s: any) => s.id === selectedReq.student_id) : null
-
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Hostel Request Review</h1>
-        <p className="text-sm text-gray-500 mt-1">Review and approve student accommodation requests.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            HOS-07
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            Hostel Application Review Desk
+          </h1>
+        </div>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          Warden office console to sanction room allocation, transfer, and vacate requests.
+        </p>
       </div>
 
-      <div className="flex border-b">
-        {(['PENDING', 'APPROVED', 'REJECTED'] as RequestStatus[]).map(tab => (
-          <button
-            key={tab}
-            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 -mb-[1px] ${activeTab === tab ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0) + tab.slice(1).toLowerCase()}
-          </button>
-        ))}
+      {/* StatCards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <StatCard
+          label="Pending Sanction"
+          value={activeTab === 'PENDING' ? requests.length : '—'}
+          tone="accent"
+          icon={<Clock size={18} />}
+          description="In warden queue"
+        />
+        <StatCard
+          label="Current Review Filter"
+          value={activeTab}
+          tone="neutral"
+          icon={<Home size={18} />}
+          description="Click tabs below to switch"
+        />
+        <StatCard
+          label="SLA Compliance"
+          value="< 48 Hrs"
+          tone="positive"
+          icon={<CheckCircle size={18} />}
+          description="Average decision turnaround"
+        />
       </div>
 
-      <Card padding="none">
-        <Table 
-          data={requests} 
-          columns={columns} 
+      {/* Tabs & Table */}
+      <Card padding={0}>
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '0 16px',
+          background: 'var(--color-surface)'
+        }}>
+          {(['PENDING', 'APPROVED', 'REJECTED'] as RequestStatus[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '14px 20px',
+                border: 'none',
+                background: 'transparent',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <Table
+          data={requests}
+          columns={columns}
           keyExtractor={(r) => r.id.toString()}
-          isLoading={isLoading}
-          emptyMessage={`No ${activeTab.toLowerCase()} requests found.`}
+          isLoading={reqLoading || stuLoading}
+          emptyMessage="No requests found in this review queue."
         />
       </Card>
 
-      <Modal isOpen={!!selectedReq} onClose={() => setSelectedReq(null)} title="Review Request">
+      {/* Review Drawer */}
+      <Drawer
+        isOpen={!!selectedReq}
+        onClose={() => setSelectedReq(null)}
+        title={selectedReq ? `Review Application #${selectedReq.id}` : ''}
+        size="md"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Button variant="secondary" onClick={() => setSelectedReq(null)}>Close</Button>
+            {selectedReq?.status === 'PENDING' && (
+              <>
+                <Button variant="danger" onClick={() => handleDecision('REJECTED')}>
+                  Reject Request
+                </Button>
+                <Button variant="primary" onClick={() => handleDecision('APPROVED')}>
+                  Approve & Allot
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      >
         {selectedReq && (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg flex items-start gap-4 border">
-              <div className="w-12 h-12 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-bold text-lg shrink-0">
-                {studentInfo?.name?.charAt(0) || 'S'}
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{
+              padding: '16px',
+              borderRadius: '8px',
+              background: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
               <div>
-                <h3 className="font-semibold text-gray-900">{studentInfo?.name || 'Unknown Student'}</h3>
-                <div className="text-sm text-gray-500">{studentInfo?.university_id} • {studentInfo?.program_id}</div>
-                <div className="mt-2 text-sm">
-                  <span className="font-medium">Request Type: </span> 
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>APPLICATION TYPE</div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   {selectedReq.request_type.replace('_', ' ')}
                 </div>
               </div>
+              <StatusPill label={selectedReq.status} status={selectedReq.status === 'APPROVED' ? 'success' : selectedReq.status === 'PENDING' ? 'warning' : 'error'} />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Student's Details & Reason</label>
-              <div className="text-sm text-gray-600 bg-gray-50 border p-3 rounded-md min-h-[4rem]">
-                {selectedReq.details || <span className="italic text-gray-400">No additional details provided.</span>}
+              <h4 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                APPLICANT NOTES
+              </h4>
+              <div style={{
+                padding: '12px',
+                borderRadius: '6px',
+                background: 'var(--color-surface-subtle)',
+                fontSize: '13px',
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.5
+              }}>
+                {selectedReq.details || 'No additional remarks submitted.'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Admin Remark (Required for Rejection)</label>
-              <textarea 
-                rows={3} 
-                className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-                placeholder="Add notes or reason for decision..."
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Warden Office Endorsement Notes
+              </label>
+              <textarea
                 value={remark}
-                onChange={e => setRemark(e.target.value)}
-                disabled={selectedReq.status !== 'PENDING'}
+                onChange={(e) => setRemark(e.target.value)}
+                rows={3}
+                placeholder="Optional notes or condition of allotment..."
+                style={{
+                  width: '100%',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  color: 'var(--color-text-primary)',
+                  background: 'var(--color-surface)',
+                  outline: 'none',
+                  resize: 'vertical'
+                }}
               />
             </div>
-
-            {selectedReq.status === 'PENDING' ? (
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="tertiary" onClick={() => setSelectedReq(null)}>Cancel</Button>
-                <Button 
-                  variant="secondary" 
-                  className="!text-red-600 !border-red-200 hover:!bg-red-50"
-                  disabled={!remark.trim() || decideRequest.isPending}
-                  onClick={() => handleDecision('REJECTED')}
-                >
-                  Reject Request
-                </Button>
-                <Button 
-                  isLoading={decideRequest.isPending}
-                  onClick={() => handleDecision('APPROVED')}
-                >
-                  Approve
-                </Button>
-              </div>
-            ) : (
-              <div className="flex justify-end pt-4 border-t">
-                <Button onClick={() => setSelectedReq(null)}>Close</Button>
-              </div>
-            )}
           </div>
         )}
-      </Modal>
+      </Drawer>
     </div>
   )
 }

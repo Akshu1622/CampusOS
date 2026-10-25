@@ -37,6 +37,8 @@ export interface HostelRequest {
   status: RequestStatus
   decision_by: number | null
   remark: string | null
+  created_at?: string
+  reviewer_notes?: string
 }
 
 export interface HostelOccupancy {

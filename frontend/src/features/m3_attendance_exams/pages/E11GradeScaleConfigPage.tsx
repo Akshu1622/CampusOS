@@ -206,9 +206,6 @@ export function E11GradeScaleConfigPage() {
           <Button variant="secondary" icon={<RotateCcw size={16} />} onClick={() => setIsResetDialogOpen(true)}>
             Reset Defaults
           </Button>
-          <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenAdd}>
-            Add Grade Rule
-          </Button>
         </div>
       </div>
 
@@ -312,8 +309,7 @@ export function E11GradeScaleConfigPage() {
           <EmptyState
             icon={<Settings size={36} />}
             title="No grade scale rules configured"
-            description="Add grade scale rules to enable automatic grading."
-            action={<Button variant="primary" onClick={handleOpenAdd}>Add Grade Rule</Button>}
+            description="Grade scale rules can be configured from system defaults."
           />
         ) : (
           <Table
