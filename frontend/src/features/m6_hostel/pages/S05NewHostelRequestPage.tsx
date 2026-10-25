@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react'
-import { Card, Button, Input, Select } from '@/components/ui'
+import { Card, Button, Input, Select, Alert } from '@/components/ui'
 import { useCreateMyRequest, useMyHostel, useHostels } from '../hooks'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { RequestType } from '../api'
+import { Home, ArrowLeft, Send, CheckCircle2, AlertCircle } from 'lucide-react'
 
 const requestSchema = z.object({
   request_type: z.enum(['ALLOCATION', 'ROOM_CHANGE', 'VACATE']),
@@ -46,70 +47,82 @@ export function S05NewHostelRequestPage() {
     })
   }
 
-  if (allocLoading) return <div className="p-8 text-center text-gray-500">Loading...</div>
+  if (allocLoading) return <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading allocation status...</div>
 
   const hasAllocation = allocation && allocation.status !== 'VACATED'
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">New Hostel Request</h1>
-        <p className="text-sm text-gray-500 mt-1">Submit a request for hostel accommodation, room change, or vacating.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+              HOS-05
+            </span>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+              Submit Hostel Request
+            </h1>
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+            Apply for on-campus residential accommodation, room transfers, or vacate clearance.
+          </p>
+        </div>
+        <Button variant="subtle" size="sm" leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/student/hostel')}>
+          Back
+        </Button>
       </div>
 
       {hasAllocation && (
-        <div className="bg-blue-50 text-blue-800 p-4 rounded-lg flex items-start gap-3">
-          <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div className="text-sm">
-            <p className="font-medium">You already have an active allocation.</p>
-            <p className="mt-1 opacity-90">You can only request a Room Change or to Vacate your current room.</p>
-          </div>
-        </div>
+        <Alert variant="info" title="Existing Hall Allocation Active">
+          You currently hold an active room allotment. You may submit a request for a Room Transfer or to Vacate your current room.
+        </Alert>
       )}
 
-      <Card>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">Request Type</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <label className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedType === 'ALLOCATION' ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500' : 'hover:bg-gray-50'} ${hasAllocation ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" value="ALLOCATION" disabled={hasAllocation} {...register('request_type')} className="text-primary-600 focus:ring-primary-500 h-4 w-4" />
-                  <span className="font-medium text-gray-900">New Allocation</span>
+      <Card padding={24}>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--color-text-primary)' }}>
+              Select Request Nature
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              {[
+                { type: 'ALLOCATION' as const, label: 'New Allocation', desc: 'Fresh room allotment', disabled: hasAllocation },
+                { type: 'ROOM_CHANGE' as const, label: 'Room Transfer', desc: 'Transfer wing or floor', disabled: !hasAllocation },
+                { type: 'VACATE' as const, label: 'Vacate Hostel', desc: 'Relinquish room key', disabled: !hasAllocation },
+              ].map(item => (
+                <div
+                  key={item.type}
+                  onClick={() => !item.disabled && setValue('request_type', item.type)}
+                  style={{
+                    border: `1.5px solid ${selectedType === item.type ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    borderRadius: '8px',
+                    padding: '14px',
+                    cursor: item.disabled ? 'not-allowed' : 'pointer',
+                    opacity: item.disabled ? 0.5 : 1,
+                    background: selectedType === item.type ? 'var(--color-primary-subtle)' : 'var(--color-surface)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: selectedType === item.type ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    {item.desc}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 ml-7">Request a room in a campus hostel.</div>
-              </label>
-
-              <label className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedType === 'ROOM_CHANGE' ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500' : 'hover:bg-gray-50'} ${!hasAllocation ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" value="ROOM_CHANGE" disabled={!hasAllocation} {...register('request_type')} className="text-primary-600 focus:ring-primary-500 h-4 w-4" />
-                  <span className="font-medium text-gray-900">Room Change</span>
-                </div>
-                <div className="text-xs text-gray-500 ml-7">Move to a different room or hostel.</div>
-              </label>
-
-              <label className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedType === 'VACATE' ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500' : 'hover:bg-gray-50'} ${!hasAllocation ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" value="VACATE" disabled={!hasAllocation} {...register('request_type')} className="text-primary-600 focus:ring-primary-500 h-4 w-4" />
-                  <span className="font-medium text-gray-900">Vacate Room</span>
-                </div>
-                <div className="text-xs text-gray-500 ml-7">Leave your current hostel allocation.</div>
-              </label>
+              ))}
             </div>
-            {errors.request_type && <div className="text-sm text-red-500">{errors.request_type.message as string}</div>}
           </div>
 
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">Additional Details</label>
-            
-            {(selectedType === 'ALLOCATION' || selectedType === 'ROOM_CHANGE') && (
-              <Select 
-                label="Preferred Hostel (Optional)" 
+          {(selectedType === 'ALLOCATION' || selectedType === 'ROOM_CHANGE') && (
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Preferred Residence Hall (Optional)
+              </label>
+              <Select
                 options={[
-                  { label: 'No Preference', value: '' },
-                  ...hostels.map(h => ({ label: `${h.name} (${h.gender_block})`, value: h.name }))
+                  { label: 'No Specific Preference', value: '' },
+                  ...hostels.map(h => ({ label: `${h.name} (${h.gender_block} Block)`, value: h.name }))
                 ]}
                 onChange={(e) => {
                   const currentVal = watch('details') || ''
@@ -117,23 +130,37 @@ export function S05NewHostelRequestPage() {
                   setValue('details', pref + currentVal.replace(/^Preference: .*\n/, ''))
                 }}
               />
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reason / Notes</label>
-              <textarea 
-                {...register('details')} 
-                rows={4} 
-                className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-                placeholder={selectedType === 'VACATE' ? "Please state the reason for vacating the hostel." : "Any specific requirements (e.g. ground floor for medical reasons)."}
-              />
-              <p className="text-xs text-gray-500 mt-1">Provide clear justification to help administrators process your request faster.</p>
             </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+              Justification & Medical / Academic Notes
+            </label>
+            <textarea
+              {...register('details')}
+              rows={4}
+              placeholder={selectedType === 'VACATE' ? "State reason for vacating (e.g. Day Scholar conversion, graduation)..." : "Specific requirements (e.g. ground floor request due to medical injury)..."}
+              style={{
+                width: '100%',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border)',
+                padding: '10px 12px',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                color: 'var(--color-text-primary)',
+                background: 'var(--color-surface)',
+                outline: 'none',
+                resize: 'vertical'
+              }}
+            />
           </div>
 
-          <div className="pt-4 border-t flex justify-end gap-3">
-            <Button variant="tertiary" onClick={() => navigate(-1)}>Cancel</Button>
-            <Button type="submit" isLoading={createRequest.isPending}>Submit Request</Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="secondary" onClick={() => navigate(-1)}>Cancel</Button>
+            <Button type="submit" variant="primary" leftIcon={<Send size={14} />} isLoading={createRequest.isPending}>
+              Submit Request
+            </Button>
           </div>
         </form>
       </Card>

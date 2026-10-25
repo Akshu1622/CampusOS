@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import {
   Card, Button, Input, Select, Table, StatusPill, EmptyState, LoadingSkeleton, StatCard
 } from '@/components/ui'
-import { GroupedBarChart } from '@/components/ui/Charts'
 import { useAttendanceShortage } from '../hooks'
 import { useCourses, useDepartments } from '../../m2_academics/hooks'
 import { calculateGapTo75 } from '../utils'
@@ -41,24 +40,6 @@ export function E04AttendanceShortageReportPage() {
   })
 
   const distinctCourses = new Set(filteredItems.map(i => i.course_code)).size
-
-  // Calculate average gap to threshold
-  const totalGap = filteredItems.reduce((sum, item) => {
-    return sum + calculateGapTo75(item.sessions_attended, item.sessions_held, threshold)
-  }, 0)
-  const avgGap = filteredItems.length > 0 ? (totalGap / filteredItems.length).toFixed(1) : '0'
-
-  // Chart data: shortage count per course
-  const courseShortageCounts = React.useMemo(() => {
-    const map = new Map<string, number>()
-    filteredItems.forEach(item => {
-      map.set(item.course_code, (map.get(item.course_code) || 0) + 1)
-    })
-    return Array.from(map.entries()).map(([course, count]) => ({
-      course,
-      students: count
-    }))
-  }, [filteredItems])
 
   const handleExportCSV = () => {
     const headers = ['Student_ID', 'Student_Name', 'Course_Code', 'Course_Title', 'Held', 'Attended', 'Attendance_Pct', 'Shortage_Gap_Sessions_Needed']
@@ -227,7 +208,7 @@ export function E04AttendanceShortageReportPage() {
         </div>
       </Card>
 
-      {/* KPI Cards Strip (3 StatCards with Rose / alerts icon chip) */}
+      {/* KPI Cards Strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
           label="Students in Shortage"
@@ -245,32 +226,7 @@ export function E04AttendanceShortageReportPage() {
           supportText="Active course offerings"
           supportColor="neutral"
         />
-        <StatCard
-          label="Average Shortage Gap"
-          value={`${avgGap} cls`}
-          icon={<Users size={20} />}
-          moduleColor="alerts"
-          supportText="Classes needed to reach 75%"
-          supportColor="error"
-        />
       </div>
-
-      {/* Shortage by Course Chart */}
-      {courseShortageCounts.length > 0 && (
-        <Card variant="standard" padding={20}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600 }}>
-            Shortage Student Count by Course Offering
-          </h3>
-          <GroupedBarChart
-            data={courseShortageCounts}
-            xAxisKey="course"
-            bars={[
-              { key: 'students', name: 'Students in Shortage', color: 'var(--color-error)' }
-            ]}
-            height={220}
-          />
-        </Card>
-      )}
 
       {/* Main Table Card */}
       <Card variant="standard" padding={0}>

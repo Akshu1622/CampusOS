@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { Card, Button, Input, Select, StatusPill } from '@/components/ui'
+import { Card, Button, Input, Select, StatusPill, StatCard } from '@/components/ui'
 import { useHostels, useRooms, useAllocateRoom } from '../hooks'
 import { getStudents } from '../api'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Home, Bed, User, CheckCircle2, ArrowRight } from 'lucide-react'
 
 const allocateSchema = z.object({
   student_id: z.coerce.number().min(1, 'Student is required'),
@@ -43,7 +44,7 @@ export function S02RoomAllocationPage() {
 
   const selectedStudent = students.find((s: any) => s.id === selectedStudentId)
   const selectedRoom = rooms.find(r => r.id === selectedRoomId)
-  const selectedHostel = hostels.find(h => h.id === selectedHostelId)
+  const selectedHostel = hostels.find(h => h.id === (selectedRoom ? selectedRoom.hostel_id : selectedHostelId))
 
   const onSubmit = (data: any) => {
     allocateRoom.mutate(data, {
@@ -56,113 +57,163 @@ export function S02RoomAllocationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Room Allocation</h1>
-        <p className="text-sm text-gray-500 mt-1">Allocate students to available hostel rooms.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            HOS-02
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            Room & Bed Allocation Console
+          </h1>
+        </div>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          Assign verified students to vacant hostel beds with automatic vacancy recount and fee sync.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
           {/* Left Pane: Student Picker */}
-          <Card title="1. Select Student">
-            <div className="space-y-4">
+          <Card padding={20}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              1. Select Student
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Input 
-                placeholder="Search by name or ID..." 
+                placeholder="Search student by name or enrollment ID..." 
                 value={searchStudent}
                 onChange={e => setSearchStudent(e.target.value)}
               />
-              <div className="border rounded-md divide-y max-h-96 overflow-y-auto">
-                {filteredStudents.length === 0 && <div className="p-4 text-center text-sm text-gray-500">No students found</div>}
+              <div style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                maxHeight: '300px',
+                overflowY: 'auto'
+              }}>
+                {filteredStudents.length === 0 && (
+                  <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                    No students match search
+                  </div>
+                )}
                 {filteredStudents.map((s: any) => (
                   <div 
                     key={s.id} 
-                    className={`p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 ${selectedStudentId === s.id ? 'bg-primary-50 border-l-2 border-primary-500' : ''}`}
                     onClick={() => {
                       setSelectedStudentId(s.id)
                       setValue('student_id', s.id)
                     }}
+                    style={{
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid var(--color-border)',
+                      background: selectedStudentId === s.id ? 'var(--color-primary-subtle)' : 'transparent',
+                      borderLeft: selectedStudentId === s.id ? '3px solid var(--color-primary)' : '3px solid transparent'
+                    }}
                   >
-                    <div>
-                      <div className="font-medium text-sm text-gray-900">{s.first_name} {s.last_name}</div>
-                      <div className="text-xs text-gray-500">{s.global_student_id || s.student_id} • Program #{s.program_id}</div>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-text-primary)' }}>
+                      {s.first_name} {s.last_name}
+                    </div>
+                    <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>
+                      {s.global_student_id || s.student_id} • Program #{s.program_id}
                     </div>
                   </div>
                 ))}
               </div>
-              {errors.student_id && <div className="text-sm text-red-500">{errors.student_id.message as string}</div>}
+              {errors.student_id && <div style={{ fontSize: '12px', color: 'var(--color-error)' }}>{errors.student_id.message as string}</div>}
             </div>
           </Card>
 
           {/* Right Pane: Room Picker */}
-          <Card title="2. Select Room">
-            <div className="space-y-4">
-              <Select 
-                label="Filter by Hostel" 
-                value={selectedHostelId?.toString() || ''}
-                onChange={e => setSelectedHostelId(e.target.value ? parseInt(e.target.value) : undefined)}
-                options={[
-                  { label: 'All Hostels', value: '' },
-                  ...hostels.map(h => ({ label: h.name, value: h.id.toString() }))
-                ]}
-              />
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                {rooms.length === 0 && <div className="col-span-3 text-center text-sm text-gray-500 py-4">No rooms match filter</div>}
-                {rooms.map(r => {
-                  const h = hostels.find(h => h.id === r.hostel_id)
-                  const isSelected = selectedRoomId === r.id
-                  const isFull = r.available_beds === 0
-                  return (
-                    <div 
-                      key={r.id}
-                      className={`border rounded-lg p-3 text-center ${isFull ? 'bg-gray-100 opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-primary-300'} ${isSelected ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500' : ''}`}
-                      onClick={() => {
-                        if (!isFull) {
-                          setSelectedRoomId(r.id)
-                          setValue('room_id', r.id)
-                        }
-                      }}
-                    >
-                      <div className="text-xs text-gray-500 mb-1">{h?.name}</div>
-                      <div className="font-medium text-gray-900 text-lg mb-2">{r.room_number}</div>
+          <Card padding={20}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                2. Select Vacant Room
+              </h3>
+              <div style={{ width: '160px' }}>
+                <Select
+                  value={selectedHostelId?.toString() || ''}
+                  onChange={e => setSelectedHostelId(e.target.value ? parseInt(e.target.value) : undefined)}
+                  options={[
+                    { label: 'All Hostels', value: '' },
+                    ...hostels.map(h => ({ label: h.name, value: h.id.toString() }))
+                  ]}
+                />
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+              gap: '10px',
+              maxHeight: '300px',
+              overflowY: 'auto',
+              padding: '4px'
+            }}>
+              {rooms.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '16px', fontSize: '13px', color: 'var(--color-text-muted)' }}>No rooms available</div>}
+              {rooms.map(r => {
+                const isSelected = selectedRoomId === r.id
+                const isFull = r.available_beds === 0
+                return (
+                  <div 
+                    key={r.id}
+                    onClick={() => {
+                      if (!isFull) {
+                        setSelectedRoomId(r.id)
+                        setValue('room_id', r.id)
+                      }
+                    }}
+                    style={{
+                      border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '6px',
+                      padding: '10px 8px',
+                      textAlign: 'center',
+                      cursor: isFull ? 'not-allowed' : 'pointer',
+                      opacity: isFull ? 0.4 : 1,
+                      background: isSelected ? 'var(--color-primary-subtle)' : isFull ? 'var(--color-surface-subtle)' : 'var(--color-surface)'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{r.room_number}</div>
+                    <div style={{ marginTop: '4px' }}>
                       <StatusPill 
-                        label={`${r.available_beds} left`} 
+                        label={`${r.available_beds} bed`} 
                         status={isFull ? 'error' : r.available_beds === 1 ? 'warning' : 'success'} 
                       />
                     </div>
-                  )
-                })}
-              </div>
-              {errors.room_id && <div className="text-sm text-red-500">{errors.room_id.message as string}</div>}
+                  </div>
+                )
+              })}
             </div>
+            {errors.room_id && <div style={{ fontSize: '12px', color: 'var(--color-error)', marginTop: '8px' }}>{errors.room_id.message as string}</div>}
           </Card>
         </div>
 
-        <Card>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="space-y-2">
-              <div className="text-sm text-gray-500">Summary</div>
-              <div className="text-lg font-medium text-gray-900 flex items-center gap-3">
-                {selectedStudent ? <span className="text-primary-600">{selectedStudent.first_name} {selectedStudent.last_name} ({selectedStudent.global_student_id || selectedStudent.student_id})</span> : <span className="text-gray-400 italic">No student selected</span>}
-                <span className="text-gray-400">→</span>
-                {selectedRoom ? (
-                  <span className="text-primary-600">{selectedHostel?.name} - {selectedRoom.room_number}</span>
+        {/* Bottom Submission Strip */}
+        <Card padding={20}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>CONFIRMATION SUMMARY</div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {selectedStudent ? (
+                  <span style={{ color: 'var(--color-primary)' }}>{selectedStudent.first_name} {selectedStudent.last_name}</span>
                 ) : (
-                  <span className="text-gray-400 italic">No room selected</span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Select Student</span>
+                )}
+                <span>→</span>
+                {selectedRoom ? (
+                  <span style={{ color: 'var(--color-primary)' }}>{selectedHostel?.name} (Room {selectedRoom.room_number})</span>
+                ) : (
+                  <span style={{ color: 'var(--color-text-muted)' }}>Select Room</span>
                 )}
               </div>
-              {selectedRoom && (
-                <div className="text-sm text-gray-500">
-                  Beds left after: <span className="font-medium">{selectedRoom.available_beds - 1}</span>
-                </div>
-              )}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-40">
-                <Input type="date" label="From Date" {...register('from_date')} error={errors.from_date?.message as string} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '160px' }}>
+                <Input type="date" {...register('from_date')} />
               </div>
-              <Button type="submit" size="lg" isLoading={allocateRoom.isPending} disabled={!selectedStudentId || !selectedRoomId}>
-                Allocate Room
+              <Button type="submit" variant="primary" size="md" isLoading={allocateRoom.isPending} disabled={!selectedStudentId || !selectedRoomId}>
+                Confirm Allocation
               </Button>
             </div>
           </div>

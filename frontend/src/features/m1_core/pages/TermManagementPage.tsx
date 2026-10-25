@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Input, Select, StatusPill, Drawer, EmptyState, ConfirmationDialog } from '@/components/ui'
+import { Card, StatCard, Button, Input, Select, StatusPill, Drawer, EmptyState, ConfirmationDialog } from '@/components/ui'
 import { apiClient } from '@/api/client'
 import { toast } from 'react-hot-toast'
 import { Plus, Calendar, MoreHorizontal } from 'lucide-react'
