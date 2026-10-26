@@ -32,15 +32,24 @@ def test_m3_workflow(client, admin_token, faculty_token, student_token):
     res_c = client.post("/api/v1/courses", json={"code": code, "title": "M3 Course", "credits": 4, "department_id": 1}, headers={"Authorization": f"Bearer {admin_token}"})
     course_id = res_c.json()["id"]
     
+    # Find current active term
+    terms_res = client.get("/api/v1/terms")
+    current_term = next((t for t in terms_res.json() if t.get("is_current")), None)
+    term_id = current_term["id"] if current_term else 1
+
     section = f"Z{random.randint(1,99)}"
     # Using faculty_id 1 which is assigned to faculty_token
-    res_o = client.post("/api/v1/offerings", json={"course_id": course_id, "term_id": 2, "faculty_id": 1, "section": section, "capacity": 30}, headers={"Authorization": f"Bearer {admin_token}"})
+    res_o = client.post("/api/v1/offerings", json={"course_id": course_id, "term_id": term_id, "faculty_id": 1, "section": section, "capacity": 30}, headers={"Authorization": f"Bearer {admin_token}"})
     oid = res_o.json()["id"]
 
     res_me = client.get("/api/v1/me", headers={"Authorization": f"Bearer {student_token}"})
     student_id = res_me.json()["student_id"]
 
+    # Map course into student's program curriculum
+    client.post("/api/v1/curriculum", json={"program_id": 1, "semester": 1, "course_id": course_id, "type": "CORE"}, headers={"Authorization": f"Bearer {admin_token}"})
+
     res_enr = client.post("/api/v1/enrollments", json={"student_id": student_id, "offering_id": oid}, headers={"Authorization": f"Bearer {admin_token}"})
+    assert res_enr.status_code == 201, res_enr.text
     eid = res_enr.json()["id"]
 
     # 2. Mark Attendance

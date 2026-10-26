@@ -3,9 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { analyticsApi } from '../api'
 import { reportConfigs } from './reportConfigs'
-import { Card, StatCard, Button, Table, ErrorState, LoadingSkeleton, StatusPill } from '@/components/ui'
+import { Card, StatCard, Button, Table, ErrorState, LoadingSkeleton, StatusPill, Input, Select } from '@/components/ui'
 import { GroupedBarChart, DonutChart } from '@/components/ui/Charts'
-import { Filters } from '@/components/ui/Filters'
 import { 
   ArrowLeft, Download, RefreshCw, Printer, FileText, 
   BarChart3, CheckCircle2, AlertTriangle 
@@ -235,12 +234,46 @@ export function R02ReportPage() {
             Last generated at {new Date().toLocaleTimeString()}
           </span>
         </div>
-        <div style={{ padding: '16px 20px' }}>
-          <Filters 
-            filters={config.filters} 
-            values={filters} 
-            onChange={(newVals) => { setFilters(newVals); setPage(1); }} 
-          />
+        <div style={{ padding: '16px 20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {config.filters.map((f) => (
+            <div key={f.name} style={{ minWidth: '180px', flex: '1 1 180px', maxWidth: '280px' }}>
+              {f.type === 'select' ? (
+                <Select
+                  label={f.label}
+                  value={filters[f.name] ?? f.defaultValue ?? ''}
+                  options={[{ label: `All ${f.label}`, value: '' }, ...(f.options || [])]}
+                  onChange={(e) => {
+                    setFilters(prev => ({ ...prev, [f.name]: e.target.value || undefined }))
+                    setPage(1)
+                  }}
+                />
+              ) : (
+                <Input
+                  label={f.label}
+                  type={f.type === 'number' ? 'number' : 'text'}
+                  placeholder={`Filter by ${f.label.toLowerCase()}...`}
+                  value={filters[f.name] ?? f.defaultValue ?? ''}
+                  onChange={(e) => {
+                    const val = f.type === 'number' ? (e.target.value ? Number(e.target.value) : undefined) : (e.target.value || undefined)
+                    setFilters(prev => ({ ...prev, [f.name]: val }))
+                    setPage(1)
+                  }}
+                />
+              )}
+            </div>
+          ))}
+          {Object.keys(filters).length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFilters({})
+                setPage(1)
+              }}
+              style={{ height: '40px' }}
+            >
+              Reset Filters
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -287,7 +320,11 @@ export function R02ReportPage() {
             {config.chart.type === 'bar' ? (
               <GroupedBarChart 
                 data={processedData} 
-                bars={config.chart.dataKeys || []} 
+                bars={(config.chart.dataKeys || []).map(b => ({
+                  key: b.key,
+                  name: b.name || b.key,
+                  color: b.color
+                }))} 
                 xAxisKey={config.chart.xAxisKey} 
                 layout={config.chart.layout || 'horizontal'} 
               />

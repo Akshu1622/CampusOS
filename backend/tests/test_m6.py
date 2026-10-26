@@ -17,6 +17,11 @@ def test_hostel_workflow(admin_hostel_token, student_token):
     headers_student = {"Authorization": f"Bearer {student_token}"}
     
     unique_suffix = str(int(time.time()))
+    # Ensure student has no active allocation before test starts
+    curr_alloc = client.get("/api/v1/me/hostel", headers=headers_student)
+    if curr_alloc.status_code == 200 and curr_alloc.json():
+        client.patch(f"/api/v1/hostel-allocations/{curr_alloc.json()['id']}/vacate", headers=headers_admin)
+
     # 1. Create Hostel (Admin)
     hostel_data = {
         "name": f"Test Hostel A {unique_suffix}",
@@ -64,7 +69,7 @@ def test_hostel_workflow(admin_hostel_token, student_token):
     # Since we can't easily fetch student_id from /me (unless it exposes it),
     # let's fetch it via another endpoint or assume student_id = 1.
     # Alternatively, the request returns student_id!
-    resp = client.get(f"/api/v1/hostel-requests", headers=headers_admin)
+    resp = client.get(f"/api/v1/hostel-requests?limit=1000", headers=headers_admin)
     reqs = [r for r in resp.json() if r["id"] == req_id]
     assert len(reqs) == 1
     student_id = reqs[0]["student_id"]

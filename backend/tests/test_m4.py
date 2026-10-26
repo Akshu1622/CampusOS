@@ -4,18 +4,24 @@ import random
 from datetime import date, timedelta
 
 def test_m4_fee_workflow(client, admin_finance_token, student_token):
-    # Ensure no collision on UK_prog_term (program_id, term_id)
-    res_list = client.get("/api/v1/fee-structures", headers={"Authorization": f"Bearer {admin_finance_token}"})
-    if res_list.status_code == 200:
-        for item in res_list.json().get("items", []):
-            if item.get("program_id") == 2 and item.get("term_id") == 2:
-                client.delete(f"/api/v1/fee-structures/{item['id']}", headers={"Authorization": f"Bearer {admin_finance_token}"})
+    # Create a unique term for test fee structure to avoid collisions with seeded terms
+    test_year = 2035 + random.randint(1, 900)
+    res_ct = client.post("/api/v1/terms", json={
+        "year": test_year,
+        "label": "FALL",
+        "start_date": f"{test_year}-08-01",
+        "end_date": f"{test_year}-12-31",
+        "is_current": False
+    }, headers={"Authorization": f"Bearer {admin_finance_token}"})
+    assert res_ct.status_code == 200, res_ct.text
+    terms = client.get("/api/v1/terms").json()
+    test_term_id = next(t["id"] for t in terms if t["year"] == test_year and t["label"] == "FALL")
 
     # 1. Create Fee Structure
     name = f"Term Fee {random.randint(1000, 9999)}"
     res_fs = client.post("/api/v1/fee-structures", json={
         "program_id": 2,
-        "term_id": 2,
+        "term_id": test_term_id,
         "structure_name": name,
         "components": [
             {

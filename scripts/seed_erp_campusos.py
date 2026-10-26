@@ -351,18 +351,24 @@ def main():
                 admin_perm_assignments.append((user_id_seq, pid))
         return user_id_seq
 
-    # Standard Admin Accounts
-    SUPER = add_user("super.admin", 1, perms=[1, 2, 3, 4, 5, 6, 7])
+    # Standard Admin Accounts (linked to administrative staff employees)
+    SUPER = add_user("super.admin", 1, employee_id=78, perms=[1, 2, 3, 4, 5, 6, 7])
     # Also add standard admin_core alias
-    add_user("admin_core", 1, perms=[1, 2, 3, 4, 5, 6, 7])
-    ACAD = add_user("academics.admin", 1, perms=[2])
-    EXAM = add_user("exams.admin", 1, perms=[3])
-    FIN = add_user("finance.admin", 1, perms=[4])
-    add_user("admin_finance", 1, perms=[4])
-    HR = add_user("hr.admin", 1, perms=[5])
-    add_user("admin_hr", 1, perms=[5])
-    HOST = add_user("hostel.admin", 1, perms=[6])
-    add_user("admin_hostel", 1, perms=[6])
+    add_user("admin_core", 1, employee_id=79, perms=[1, 2, 3, 4, 5, 6, 7])
+    ACAD = add_user("academics.admin", 1, employee_id=80, perms=[2])
+    EXAM = add_user("exams.admin", 1, employee_id=61, perms=[3])
+    FIN = add_user("finance.admin", 1, employee_id=70, perms=[4])
+    add_user("admin_finance", 1, employee_id=71, perms=[4])
+    HR = add_user("hr.admin", 1, employee_id=62, perms=[5])
+    add_user("admin_hr", 1, employee_id=63, perms=[5])
+    HOST = add_user("hostel.admin", 1, employee_id=74, perms=[6])
+    add_user("admin_hostel", 1, employee_id=75, perms=[6])
+
+    # Standard Demo Test Accounts (faculty1..3, student1..5)
+    for i in range(1, 4):
+        add_user(f"faculty{i}", 2, employee_id=i)
+    for i in range(1, 6):
+        add_user(f"student{i}", 3, student_id=i)
 
     # Faculty users
     emp_user_ids = {}

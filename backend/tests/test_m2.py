@@ -75,9 +75,14 @@ def test_enrollment_workflow(client, admin_token, student_token):
     # Setup Course & Offering
     res = client.post("/api/v1/courses", json={"code": code, "title": "Enroll Course", "credits": 4, "department_id": 1}, headers={"Authorization": f"Bearer {admin_token}"})
     course_id = res.json()["id"]
+    # Find current active term
+    terms_res = client.get("/api/v1/terms")
+    current_term = next((t for t in terms_res.json() if t.get("is_current")), None)
+    term_id = current_term["id"] if current_term else 1
+
     # use a unique section name so it doesn't collide
     section = f"Z{random.randint(1,99)}"
-    res = client.post("/api/v1/offerings", json={"course_id": course_id, "term_id": 2, "faculty_id": 1, "section": section, "capacity": 30}, headers={"Authorization": f"Bearer {admin_token}"})
+    res = client.post("/api/v1/offerings", json={"course_id": course_id, "term_id": term_id, "faculty_id": 1, "section": section, "capacity": 30}, headers={"Authorization": f"Bearer {admin_token}"})
     oid = res.json()["id"]
 
     # Find student ID for the student token (Student1)
@@ -85,9 +90,12 @@ def test_enrollment_workflow(client, admin_token, student_token):
     student_uid = res_me.json()["id"]
     student_id = res_me.json()["student_id"]
 
+    # Map course into student's program curriculum
+    client.post("/api/v1/curriculum", json={"program_id": 1, "semester": 1, "course_id": course_id, "type": "CORE"}, headers={"Authorization": f"Bearer {admin_token}"})
+
     # 1. Admin Enrolls Student
     res_enr = client.post("/api/v1/enrollments", json={"student_id": student_id, "offering_id": oid}, headers={"Authorization": f"Bearer {admin_token}"})
-    assert res_enr.status_code == 201
+    assert res_enr.status_code == 201, res_enr.text
     eid = res_enr.json()["id"]
 
     # 2. Student views "My Courses"
