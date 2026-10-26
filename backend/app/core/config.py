@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         if value is None:
             return "app"
         value = str(value).strip()
-        if not value or value.lower() == "root":
+        if not value:
             return "app"
         return value
 
@@ -44,11 +44,8 @@ class Settings(BaseSettings):
     @classmethod
     def validate_app_password(cls, value: Optional[str]) -> str:
         if value is None:
-            return "apppass123"
-        value = str(value).strip()
-        if not value:
-            return "apppass123"
-        return value
+            return ""
+        return str(value)
 
     @property
     def DATABASE_URL(self) -> str:

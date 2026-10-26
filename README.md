@@ -53,6 +53,18 @@ VITE_API_BASE_URL=http://localhost:8000
 ```
 
 ### 3. Database Initialization
+
+#### Option A: Local MySQL (No Docker required — MySQL Server, XAMPP, MariaDB)
+Ensure your local MySQL service is running, update `MYSQL_ROOT_PASSWORD` in `.env` if needed, then run:
+```powershell
+python scripts/init_local_db.py
+```
+To verify the database integrity:
+```powershell
+python scripts/verify_seed.py
+```
+
+#### Option B: Docker
 ```powershell
 # Start MySQL in Docker
 python scripts/db_up.py

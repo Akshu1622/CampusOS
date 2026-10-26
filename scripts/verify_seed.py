@@ -17,7 +17,46 @@ def load_env(env_path):
                         env[k] = v
     return env
 
+_local_conn = None
+_env_cache = {}
+
+def get_connection(db_name, root_pass):
+    global _local_conn, _env_cache
+    if _local_conn is not None:
+        return _local_conn
+    try:
+        import pymysql
+        host = _env_cache.get("MYSQL_HOST", "localhost")
+        port = int(_env_cache.get("MYSQL_PORT", 3306))
+        user = _env_cache.get("MYSQL_ROOT_USER", "root")
+        _local_conn = pymysql.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=root_pass,
+            database=db_name,
+            charset='utf8mb4'
+        )
+        return _local_conn
+    except Exception:
+        return None
+
 def run_query(query, db_name, root_pass):
+    conn = get_connection(db_name, root_pass)
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(query)
+                rows = cur.fetchall()
+                lines = []
+                for row in rows:
+                    lines.append("\t".join(str(val) for val in row))
+                return "\n".join(lines)
+        except Exception as e:
+            print("Error executing query via PyMySQL:", query)
+            print(e)
+            sys.exit(1)
+
     cmd = ["docker", "compose", "exec", "-T", "db", "mysql", "-u", "root", f"-p{root_pass}", db_name, "-B", "-N", "-e", query]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
@@ -55,11 +94,13 @@ def check_zero(query, db_name, root_pass, name):
         sys.exit(1)
 
 def main():
+    global _env_cache
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     env_path = os.path.join(project_root, '.env')
     env_vars = load_env(env_path)
+    _env_cache = env_vars
     
-    root_pass = env_vars.get("MYSQL_ROOT_PASSWORD", "rootpassword")
+    root_pass = env_vars.get("MYSQL_ROOT_PASSWORD", "")
     db_name = env_vars.get("MYSQL_DATABASE", "university_erp")
     
     print("=== Row Counts ===")
