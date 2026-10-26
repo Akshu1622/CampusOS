@@ -135,7 +135,24 @@ class M1Repository:
         return result
 
     def get_departments(self):
-        return self.db.execute(text("SELECT id, code, name, CAST(head_employee_id AS CHAR) as head FROM department ORDER BY code")).fetchall()
+        return self.db.execute(text("""
+            SELECT 
+                d.id, 
+                d.code, 
+                d.name, 
+                COALESCE(CONCAT(e.first_name, ' ', e.last_name), 'Not assigned') as head,
+                (SELECT COUNT(*) FROM program p WHERE p.department_id = d.id) as programs_count,
+                (SELECT COUNT(*) FROM course c WHERE c.department_id = d.id) as courses_count,
+                CASE 
+                    WHEN (SELECT COUNT(*) FROM program p WHERE p.department_id = d.id) = 0 
+                     AND (SELECT COUNT(*) FROM course c WHERE c.department_id = d.id) = 0 
+                    THEN 'INACTIVE' 
+                    ELSE 'ACTIVE' 
+                END as status
+            FROM department d
+            LEFT JOIN employee e ON d.head_employee_id = e.id
+            ORDER BY d.code
+        """)).fetchall()
 
     def create_department(self, code: str, name: str, head_id: Optional[int]):
         q = text("INSERT INTO department (code, name, head_employee_id) VALUES (:c, :n, :h)")
@@ -143,7 +160,7 @@ class M1Repository:
         self.db.commit()
 
     def get_programs(self):
-        return self.db.execute(text("SELECT id, department_id, code, name, duration_years, credits_required AS total_credits FROM program ORDER BY code")).fetchall()
+        return self.db.execute(text("SELECT id, department_id, code, name, duration_years, credits_required, credits_required AS total_credits FROM program ORDER BY code")).fetchall()
 
     def create_program(self, code: str, name: str, dept_id: int, duration: int, credits: int):
         q = text("INSERT INTO program (code, name, department_id, duration_years, credits_required) VALUES (:c, :n, :d, :dy, :cr)")

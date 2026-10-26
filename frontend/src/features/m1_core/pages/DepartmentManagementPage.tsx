@@ -107,7 +107,7 @@ export function DepartmentManagementPage() {
       key: 'status',
       header: 'Status',
       render: (row: any) => (
-        <StatusPill label={row.status === 'ACTIVE' ? 'Active' : 'Inactive'} status={row.status === 'ACTIVE' ? 'success' : 'neutral'} />
+        <StatusPill label={row.status === 'INACTIVE' ? 'Inactive' : 'Active'} status={row.status === 'INACTIVE' ? 'neutral' : 'success'} />
       )
     },
     {
@@ -229,7 +229,7 @@ export function DepartmentManagementPage() {
           />
           <Input 
             label="Appointed Head of Department (HOD)" 
-            placeholder="e.g. Dr. Ramesh Kumar" 
+            placeholder="e.g. EMP-2020-0001 or faculty name (Optional)" 
             value={formData.head} 
             onChange={(e) => setFormData({ ...formData, head: e.target.value })} 
           />

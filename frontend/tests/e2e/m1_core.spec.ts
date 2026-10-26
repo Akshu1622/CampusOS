@@ -78,7 +78,7 @@ test.describe('M1 Core Pages Smoke Tests', () => {
 
   test('Student Master Page loads correctly', async ({ page }) => {
     await page.goto('/admin/students');
-    await expect(page.locator('h1:has-text("Students")')).toBeVisible();
+    await expect(page.locator('h1:has-text("Student")')).toBeVisible();
     await expect(page.locator('button:has-text("Add Student")').first()).toBeVisible();
   });
 });

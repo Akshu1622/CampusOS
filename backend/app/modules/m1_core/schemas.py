@@ -56,6 +56,7 @@ class DepartmentResponse(BaseModel):
     head: Optional[str] = None
     programs_count: Optional[int] = 0
     courses_count: Optional[int] = 0
+    status: Optional[str] = "ACTIVE"
 
 class ProgramCreateRequest(BaseModel):
     name: str
@@ -70,8 +71,10 @@ class ProgramResponse(BaseModel):
     name: str
     duration_years: int
     total_credits: int
+    credits_required: Optional[int] = None
     status: Optional[str] = "ACTIVE"
     students_count: Optional[int] = 0
+
 
 class TermCreateRequest(BaseModel):
     year: int
