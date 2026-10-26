@@ -207,4 +207,3 @@ This document tracks the step-by-step progress of the M2 and M3 frontend build, 
   - Enriched `README.md` with complete module architecture, setup instructions, credential tables, and test commands.
 - **Merge to Main:**
   - Merged branch `repair/m2-m3-frontend` into `main` with `--no-ff`.
-
