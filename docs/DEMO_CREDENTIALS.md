@@ -1,7 +1,7 @@
     # Demo Credentials
 
 The following credentials can be used to log into the demo application.
-All accounts use the password: `password123`
+All accounts use the password: `Password@123` (or `password123`)
 
 ## Administrators
 | Username | Role | Permission Set |

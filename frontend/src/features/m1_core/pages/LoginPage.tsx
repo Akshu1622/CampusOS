@@ -20,7 +20,7 @@ const DEMO_ROLES: DemoRole[] = [
   {
     role: 'Admin',
     username: 'admin_core',
-    password: 'password123',
+    password: 'Password@123',
     color: '#2563EB',
     bg: '#EFF6FF',
     icon: <Shield size={16} />,
@@ -29,7 +29,7 @@ const DEMO_ROLES: DemoRole[] = [
   {
     role: 'Faculty',
     username: 'faculty1',
-    password: 'password123',
+    password: 'Password@123',
     color: '#7C3AED',
     bg: '#F5F3FF',
     icon: <BookOpen size={16} />,
@@ -38,7 +38,7 @@ const DEMO_ROLES: DemoRole[] = [
   {
     role: 'Student',
     username: 'student1',
-    password: 'password123',
+    password: 'Password@123',
     color: '#0D9488',
     bg: '#F0FDFA',
     icon: <GraduationCap size={16} />,
@@ -109,7 +109,30 @@ export function LoginPage() {
 
       const authData = await response.json()
       authLogin(authData.access_token, authData.refresh_token || '')
-      navigate('/admin')
+
+      // Fetch user profile to route to role-appropriate portal
+      try {
+        const meRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/me`, {
+          headers: { Authorization: `Bearer ${authData.access_token}` }
+        })
+        if (meRes.ok) {
+          const meData = await meRes.json()
+          const roles: string[] = meData.roles || []
+          if (roles.some((r: string) => ['Admin', 'ADMIN', 'SUPERADMIN'].includes(r))) {
+            navigate('/admin')
+          } else if (roles.some((r: string) => ['Faculty', 'FACULTY'].includes(r))) {
+            navigate('/faculty')
+          } else if (roles.some((r: string) => ['Student', 'STUDENT'].includes(r))) {
+            navigate('/student')
+          } else {
+            navigate('/admin')
+          }
+        } else {
+          navigate('/admin')
+        }
+      } catch {
+        navigate('/admin')
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.')
     }
@@ -459,7 +482,7 @@ export function LoginPage() {
               border: '1px solid #BFDBFE',
               fontWeight: 500
             }}>
-              password123
+              Password@123
             </code>
           </p>
 
