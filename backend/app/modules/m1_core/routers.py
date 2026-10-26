@@ -116,7 +116,7 @@ def create_department(req: DepartmentCreateRequest, svc: M1Service = Depends(get
     if len(code_clean) > 10:
         raise APIError("INVALID_CODE", "Department code must be at most 10 characters", status_code=status.HTTP_400_BAD_REQUEST)
     head_id = None
-    if req.head and req.head.strip():
+    if req.head and req.head.strip() and req.head.strip().lower() not in ["none", "unassigned", "null", "undefined"]:
         head_str = req.head.strip()
         if head_str.isdigit():
             head_id = svc.db.execute(text("SELECT id FROM employee WHERE id = :id"), {"id": int(head_str)}).scalar()
@@ -126,7 +126,7 @@ def create_department(req: DepartmentCreateRequest, svc: M1Service = Depends(get
             clean_name = head_str.replace("Dr. ", "").replace("Dr.", "").replace("Prof. ", "").replace("Prof.", "").strip()
             head_id = svc.db.execute(text("SELECT id FROM employee WHERE CONCAT(first_name, ' ', last_name) LIKE :name OR last_name LIKE :name LIMIT 1"), {"name": f"%{clean_name}%"}).scalar()
         if not head_id:
-            raise APIError("EMPLOYEE_NOT_FOUND", f"Employee '{head_str}' not found in directory. Use a valid code (e.g. EMP-2020-0001) or leave empty.", status_code=status.HTTP_404_NOT_FOUND)
+            raise APIError("EMPLOYEE_NOT_FOUND", f"Employee '{head_str}' not found in directory. Select from directory or leave empty.", status_code=status.HTTP_404_NOT_FOUND)
     try:
         svc.repo.create_department(code_clean, req.name.strip(), head_id)
         return {"message": "Department created"}

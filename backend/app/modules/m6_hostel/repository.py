@@ -178,6 +178,35 @@ def vacate_allocation(db: Session, alloc_id: int):
         db.rollback()
         handle_db_error(e)
 
+def get_allocations(db: Session, status: Optional[str] = None, room_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[dict]:
+    try:
+        where_clauses = []
+        params = {"limit": limit, "skip": skip}
+        if status:
+            where_clauses.append("ha.status = :status")
+            params["status"] = status
+        if room_id:
+            where_clauses.append("ha.room_id = :room_id")
+            params["room_id"] = room_id
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        
+        query = text(f"""
+            SELECT ha.id, ha.student_id, ha.room_id, ha.from_date, ha.to_date, ha.status,
+                   s.first_name, s.last_name, s.global_student_id,
+                   r.room_number, h.name as hostel_name
+            FROM hostel_allocation ha
+            JOIN student s ON ha.student_id = s.id
+            JOIN room r ON ha.room_id = r.id
+            JOIN hostel h ON r.hostel_id = h.id
+            {where_sql}
+            ORDER BY ha.id DESC
+            LIMIT :limit OFFSET :skip
+        """)
+        res = db.execute(query, params).mappings().all()
+        return [dict(r) for r in res]
+    except Exception as e:
+        handle_db_error(e)
+
 # --- Occupancy ---
 def get_occupancy(db: Session) -> List[dict]:
     try:

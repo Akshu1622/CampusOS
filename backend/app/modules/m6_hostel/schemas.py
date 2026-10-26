@@ -77,6 +77,11 @@ class HostelAllocationUpdate(BaseModel):
 class HostelAllocationResponse(HostelAllocationBase):
     id: int
     status: AllocationStatus
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    global_student_id: Optional[str] = None
+    room_number: Optional[str] = None
+    hostel_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

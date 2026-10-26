@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { Card, Button, Input, Select, StatusPill, StatCard } from '@/components/ui'
-import { useHostels, useRooms, useAllocateRoom } from '../hooks'
-import { getStudents } from '../api'
+import { Card, Button, Input, Select, StatusPill, StatCard, Table, type Column } from '@/components/ui'
+import { useHostels, useRooms, useAllocateRoom, useVacateRoom, useAllocations } from '../hooks'
+import { getStudents, type HostelAllocation } from '../api'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Home, Bed, User, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Home, Bed, User, CheckCircle2, ArrowRight, Search, LogOut } from 'lucide-react'
 
 const allocateSchema = z.object({
   student_id: z.coerce.number().min(1, 'Student is required'),
@@ -18,6 +18,9 @@ export function S02RoomAllocationPage() {
   const { data: hostels = [] } = useHostels()
   const [selectedHostelId, setSelectedHostelId] = useState<number | undefined>()
   const { data: rooms = [] } = useRooms(selectedHostelId)
+  const { data: allocations = [], isLoading: allocsLoading } = useAllocations()
+  const vacateRoom = useVacateRoom()
+  const [allocSearch, setAllocSearch] = useState('')
   
   const { data: students = [] } = useQuery({
     queryKey: ['students_all'],
@@ -219,6 +222,111 @@ export function S02RoomAllocationPage() {
           </div>
         </Card>
       </form>
+
+      {/* Active Room Allocations Management Table */}
+      <Card padding={20}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              Active Room Allocations ({allocations.filter((a: any) => a.status === 'ACTIVE').length})
+            </h3>
+            <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--color-text-muted)' }}>
+              Real-time directory of students currently occupying campus hostel beds.
+            </p>
+          </div>
+          <div style={{ width: '280px' }}>
+            <Input
+              placeholder="Search student or room..."
+              value={allocSearch}
+              onChange={e => setAllocSearch(e.target.value)}
+              leftIcon={<Search size={14} />}
+            />
+          </div>
+        </div>
+
+        <Table
+          data={allocations.filter((a: any) => {
+            const matchName = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase().includes(allocSearch.toLowerCase())
+            const matchId = String(a.global_student_id || a.student_id || '').toLowerCase().includes(allocSearch.toLowerCase())
+            const matchRoom = String(a.room_number || '').toLowerCase().includes(allocSearch.toLowerCase())
+            const matchHostel = String(a.hostel_name || '').toLowerCase().includes(allocSearch.toLowerCase())
+            return matchName || matchId || matchRoom || matchHostel
+          })}
+          isLoading={allocsLoading}
+          emptyMessage="No matching allocations found."
+          columns={[
+            {
+              header: 'Student',
+              key: 'student_id',
+              render: (r: any) => (
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {r.first_name ? `${r.first_name} ${r.last_name}` : `Student #${r.student_id}`}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                    {r.global_student_id || `ID: ${r.student_id}`}
+                  </div>
+                </div>
+              )
+            },
+            {
+              header: 'Hostel & Room',
+              key: 'room_id',
+              render: (r: any) => (
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {r.hostel_name || 'Hostel'} · Room {r.room_number || r.room_id}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                    Bed assigned
+                  </div>
+                </div>
+              )
+            },
+            {
+              header: 'Allocated Date',
+              key: 'from_date',
+              render: (r: any) => (
+                <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  {r.from_date}
+                </span>
+              )
+            },
+            {
+              header: 'Status',
+              key: 'status',
+              render: (r: any) => (
+                <StatusPill
+                  label={r.status}
+                  status={r.status === 'ACTIVE' ? 'success' : 'neutral'}
+                />
+              )
+            },
+            {
+              header: 'Action',
+              key: 'id',
+              render: (r: any) => (
+                r.status === 'ACTIVE' ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    isLoading={vacateRoom.isPending}
+                    onClick={() => {
+                      if (window.confirm(`Vacate bed for ${r.first_name || 'student'} from Room ${r.room_number || r.room_id}?`)) {
+                        vacateRoom.mutate(r.id)
+                      }
+                    }}
+                  >
+                    Vacate Room
+                  </Button>
+                ) : (
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Vacated</span>
+                )
+              )
+            }
+          ]}
+        />
+      </Card>
     </div>
   )
 }

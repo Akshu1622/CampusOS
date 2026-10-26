@@ -27,6 +27,11 @@ export interface HostelAllocation {
   from_date: string
   to_date: string | null
   status: AllocationStatus
+  first_name?: string
+  last_name?: string
+  global_student_id?: string
+  room_number?: string
+  hostel_name?: string
 }
 
 export interface HostelRequest {
@@ -67,6 +72,7 @@ export const getOccupancy = () => apiClient<HostelOccupancy[]>('/hostels/occupan
 
 export const allocateRoom = (data: { student_id: number; room_id: number; from_date: string; to_date?: string }) => apiClient<HostelAllocation>('/hostel-allocations', { data })
 export const vacateRoom = (alloc_id: number) => apiClient<HostelAllocation>(`/hostel-allocations/${alloc_id}/vacate`, { method: 'PATCH' })
+export const getAllocations = (params?: { status?: AllocationStatus; room_id?: number }) => apiClient<HostelAllocation[]>('/hostel-allocations', { params })
 
 export const getMyHostel = () => apiClient<HostelAllocation>('/me/hostel')
 

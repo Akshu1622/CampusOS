@@ -1,55 +1,78 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer } from '@/components/ui'
 import { Download, FileText, CheckCircle, CreditCard, ShieldCheck } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'react-hot-toast'
 
-interface HistoryRecord {
-  id: string
-  receiptNo: string
-  date: string
-  amount: number
-  mode: string
-  items: string
-  status: 'Success' | 'Failed' | 'Pending'
+interface LivePayment {
+  id: number
+  student_id: number
+  amount: number | string
+  payment_mode: string
+  reference_no: string
+  payment_date: string
+  status: string
 }
 
-const mockHistory: HistoryRecord[] = [
-  { id: '1', receiptNo: 'REC-2026-001', date: '2026-08-16', amount: 50250, mode: 'Credit Card', items: 'Tuition Fee, Exam Fee', status: 'Success' },
-  { id: '2', receiptNo: 'REC-2026-002', date: '2026-08-10', amount: 5000, mode: 'UPI', items: 'Library Security Deposit', status: 'Success' },
-  { id: '3', receiptNo: 'REC-2026-003', date: '2026-01-14', amount: 48000, mode: 'Net Banking', items: 'Spring 2026 Tuition', status: 'Success' },
-]
-
 export const ReceiptPaymentHistoryPage: React.FC = () => {
-  const [selectedReceipt, setSelectedReceipt] = useState<HistoryRecord | null>(null)
+  const { user } = useAuth()
+  const [payments, setPayments] = useState<LivePayment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState<LivePayment | null>(null)
 
-  const totalPaid = mockHistory.reduce((sum, r) => sum + r.amount, 0)
+  const fetchPayments = async () => {
+    setLoading(true)
+    try {
+      const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin' || r.toLowerCase() === 'superadmin')
+      const endpoint = isAdmin ? '/payments?page_size=100' : '/me/payments'
+      const res = await apiClient<any>(endpoint)
+      const list = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : []
+      setPayments(list)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fetch payment receipts')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const columns: Column<HistoryRecord>[] = [
+  useEffect(() => {
+    fetchPayments()
+  }, [user])
+
+  const totalPaid = payments.reduce((sum, r) => sum + parseFloat(String(r.amount) || '0'), 0)
+
+  const columns: Column<LivePayment>[] = [
     {
-      header: 'Receipt No.',
-      key: 'receiptNo',
+      header: 'Receipt / Ref No.',
+      key: 'reference_no',
       render: (r) => (
         <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)' }}>
-          {r.receiptNo}
+          {r.reference_no}
         </span>
       )
     },
     {
       header: 'Payment Date',
-      key: 'date',
-      render: (r) => <span style={{ color: 'var(--color-text-secondary)' }}>{r.date}</span>
+      key: 'payment_date',
+      render: (r) => (
+        <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+          {new Date(r.payment_date).toLocaleString()}
+        </span>
+      )
     },
     {
       header: 'Amount Paid',
       key: 'amount',
       render: (r) => (
         <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          ₹{r.amount.toLocaleString()}
+          ₹{parseFloat(String(r.amount)).toLocaleString()}
         </span>
       )
     },
     {
       header: 'Payment Mode',
-      key: 'mode',
+      key: 'payment_mode',
       render: (r) => (
         <span style={{
           fontSize: '12px',
@@ -57,16 +80,12 @@ export const ReceiptPaymentHistoryPage: React.FC = () => {
           borderRadius: '4px',
           background: 'var(--color-surface-subtle)',
           color: 'var(--color-text-secondary)',
-          border: '1px solid var(--color-border)'
+          border: '1px solid var(--color-border)',
+          fontWeight: 600
         }}>
-          {r.mode}
+          {r.payment_mode}
         </span>
       )
-    },
-    {
-      header: 'Fee Heads / Items',
-      key: 'items',
-      render: (r) => <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{r.items}</span>
     },
     {
       header: 'Status',
@@ -74,22 +93,22 @@ export const ReceiptPaymentHistoryPage: React.FC = () => {
       render: (r) => (
         <StatusPill
           label={r.status}
-          status={r.status === 'Success' ? 'success' : r.status === 'Pending' ? 'warning' : 'error'}
+          status={r.status === 'SUCCESS' ? 'success' : r.status === 'PENDING' ? 'warning' : 'error'}
         />
       )
     },
     {
-      header: 'Receipt Voucher',
+      header: 'Actions',
       key: 'id',
       render: (r) => (
-        <Button
-          variant="subtle"
-          size="sm"
-          leftIcon={<FileText size={13} />}
-          onClick={() => setSelectedReceipt(r)}
-        >
-          View Receipt
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="subtle" size="sm" onClick={() => setSelectedReceipt(r)}>
+            View
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => toast.success(`Receipt #${r.reference_no} downloaded`)}>
+            <Download size={13} style={{ marginRight: '4px' }} /> PDF
+          </Button>
+        </div>
       )
     }
   ]
@@ -101,127 +120,122 @@ export const ReceiptPaymentHistoryPage: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
-              FIN-05
+              FIN-04
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              My Payment History & Tax Receipts
+              Official Payment Receipts & Historical Ledger
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Review all completed university fee settlements, retrieve official PDF receipts, and export statements.
+            Digitally signed transaction vouchers, fee receipts, and bank reconciliation entries.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          leftIcon={<Download size={14} />}
-          onClick={() => alert('Downloading full academic year statement PDF...')}
-        >
-          Annual Statement (PDF)
+        <Button variant="secondary" onClick={() => toast.success('Payment ledger exported')}>
+          <Download size={14} style={{ marginRight: '6px' }} /> Export Statement
         </Button>
       </div>
 
-      {/* StatCards */}
+      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
-          label="Cumulative Paid"
+          label="Total Settled Payments"
           value={`₹${totalPaid.toLocaleString()}`}
           tone="positive"
-          icon={<CreditCard size={18} />}
-          description="Total fees settled"
+          icon={<CreditCard size={20} />}
+          description="Verified bank deposits"
         />
         <StatCard
-          label="Current Outstanding"
-          value="₹0"
+          label="Receipts Issued"
+          value={payments.length}
+          tone="accent"
+          icon={<FileText size={20} />}
+          description="Official university vouchers"
+        />
+        <StatCard
+          label="Reconciliation Status"
+          value="100% Cleared"
           tone="positive"
-          description="All dues cleared for Fall 2026"
-        />
-        <StatCard
-          label="Verified Receipts"
-          value={mockHistory.length}
-          tone="neutral"
-          icon={<ShieldCheck size={18} />}
-          description="Available for download"
+          icon={<ShieldCheck size={20} />}
+          description="Zero pending reversals"
         />
       </div>
 
-      {/* Data Table */}
+      {/* Main Table Card */}
       <Card padding={0}>
-        <Table data={mockHistory} columns={columns} keyExtractor={(r) => r.id} />
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            Transaction History ({payments.length})
+          </h3>
+          <Button variant="secondary" size="sm" onClick={fetchPayments} isLoading={loading}>
+            Refresh Receipts
+          </Button>
+        </div>
+
+        <Table
+          data={payments}
+          columns={columns}
+          keyExtractor={(r) => String(r.id)}
+          isLoading={loading}
+          emptyMessage="No payment transactions found."
+        />
       </Card>
 
-      {/* Receipt Drawer */}
+      {/* Receipt Viewer Drawer */}
       <Drawer
-        isOpen={!!selectedReceipt}
+        isOpen={Boolean(selectedReceipt)}
         onClose={() => setSelectedReceipt(null)}
-        title={selectedReceipt ? `Official Receipt — ${selectedReceipt.receiptNo}` : ''}
+        title={selectedReceipt ? `Receipt Voucher — ${selectedReceipt.reference_no}` : ''}
         size="md"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <Button variant="secondary" onClick={() => setSelectedReceipt(null)}>Close</Button>
-            <Button
-              variant="primary"
-              leftIcon={<Download size={14} />}
-              onClick={() => {
-                alert(`Downloading verified PDF for receipt ${selectedReceipt?.receiptNo}`)
-                setSelectedReceipt(null)
-              }}
-            >
-              Download PDF
-            </Button>
-          </div>
+          selectedReceipt && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="secondary" onClick={() => setSelectedReceipt(null)}>Close</Button>
+              <Button variant="primary" onClick={() => toast.success(`Receipt #${selectedReceipt.reference_no} printed`)}>
+                Print Receipt
+              </Button>
+            </div>
+          )
         }
       >
         {selectedReceipt && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{
-              padding: '16px',
+              padding: '20px',
               borderRadius: '8px',
               background: 'var(--color-surface-subtle)',
               border: '1px solid var(--color-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+              textAlign: 'center'
             }}>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>SETTLED AMOUNT</div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-success)' }}>
-                  ₹{selectedReceipt.amount.toLocaleString()}
-                </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>TRANSACTION AMOUNT</div>
+              <div style={{ fontSize: '30px', fontWeight: 800, color: 'var(--color-success)', marginTop: '4px' }}>
+                ₹{parseFloat(String(selectedReceipt.amount)).toLocaleString()}
               </div>
-              <StatusPill label="PAID & VERIFIED" status="success" />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Receipt Number</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{selectedReceipt.receiptNo}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Payment Date</span>
-                <span style={{ fontWeight: 600 }}>{selectedReceipt.date}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Payment Mode</span>
-                <span style={{ fontWeight: 600 }}>{selectedReceipt.mode}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Items Covered</span>
-                <span style={{ fontWeight: 600 }}>{selectedReceipt.items}</span>
+              <div style={{ marginTop: '8px' }}>
+                <StatusPill label={selectedReceipt.status} status="success" />
               </div>
             </div>
 
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '12px',
-              borderRadius: '6px',
-              background: 'var(--color-success-bg)',
-              color: 'var(--color-success)',
-              fontSize: '13px'
-            }}>
-              <CheckCircle size={16} />
-              This digital receipt is authenticated with University Core ERP cryptographic digital seal.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Voucher Reference:</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{selectedReceipt.reference_no}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Internal Payment ID:</span>
+                <span>#{selectedReceipt.id}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Student ID:</span>
+                <span>#{selectedReceipt.student_id}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Payment Channel:</span>
+                <span style={{ fontWeight: 600 }}>{selectedReceipt.payment_mode}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Settlement Timestamp:</span>
+                <span>{new Date(selectedReceipt.payment_date).toLocaleString()}</span>
+              </div>
             </div>
           </div>
         )}

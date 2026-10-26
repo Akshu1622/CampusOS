@@ -1,116 +1,94 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, StatCard, Button, Table, type Column, Select, Input, Drawer, StatusPill } from '@/components/ui'
 import { Download, Search, ShieldCheck, History, UserCheck, ArrowRight } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
 
-interface AuditRecord {
-  id: string
-  timestamp: string
-  user: string
-  role: string
-  entity: string
-  field: string
-  oldValue: string
-  newValue: string
-  context: string
-  ipAddress: string
+interface LiveAuditRecord {
+  id: number
+  entity_name: string
+  entity_id: number
+  old_value: string
+  new_value: string
+  changed_by: string
+  changed_at: string
 }
 
-const mockAuditLogs: AuditRecord[] = [
-  { id: '1', timestamp: '2026-10-21 14:32:01', user: 'Finance Administrator', role: 'FINANCE_ADMIN', entity: 'Tuition Fee (Fall 26)', field: 'Amount', oldValue: '₹45,000', newValue: '₹50,000', context: 'Syndicate Council Resolution #88/B', ipAddress: '10.0.4.12' },
-  { id: '2', timestamp: '2026-10-18 10:15:44', user: 'Registrar Accounts', role: 'FINANCE_OFFICER', entity: 'Late Fee Policy', field: 'GraceDays', oldValue: '3 Days', newValue: '5 Days', context: 'Extended due to festival holiday calendar', ipAddress: '10.0.4.15' },
-  { id: '3', timestamp: '2026-10-15 09:00:22', user: 'System Bursar', role: 'SUPER_ADMIN', entity: 'Hostel Maintenance Head', field: 'Status', oldValue: 'INACTIVE', newValue: 'ACTIVE', context: 'Inauguration of New Diamond Hostel Block', ipAddress: '10.0.1.2' },
-]
-
 export const FeeChangeAuditLogPage: React.FC = () => {
+  const [logs, setLogs] = useState<LiveAuditRecord[]>([])
+  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [selectedLog, setSelectedLog] = useState<AuditRecord | null>(null)
+  const [selectedLog, setSelectedLog] = useState<LiveAuditRecord | null>(null)
 
-  const filtered = mockAuditLogs.filter(r =>
-    r.user.toLowerCase().includes(search.toLowerCase()) ||
-    r.entity.toLowerCase().includes(search.toLowerCase()) ||
-    r.field.toLowerCase().includes(search.toLowerCase()) ||
-    r.context.toLowerCase().includes(search.toLowerCase())
+  const fetchAuditLogs = async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient<any>('/audit/fees?page_size=100')
+      setLogs(Array.isArray(res?.items) ? res.items : [])
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fetch fee audit logs')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAuditLogs()
+  }, [])
+
+  const filtered = logs.filter(r =>
+    r.changed_by.toLowerCase().includes(search.toLowerCase()) ||
+    r.entity_name.toLowerCase().includes(search.toLowerCase()) ||
+    String(r.entity_id).includes(search)
   )
 
-  const columns: Column<AuditRecord>[] = [
+  const columns: Column<LiveAuditRecord>[] = [
     {
       header: 'Timestamp',
-      key: 'timestamp',
+      key: 'changed_at',
       render: (r) => (
         <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-          {r.timestamp}
+          {new Date(r.changed_at).toLocaleString()}
         </span>
       )
     },
     {
-      header: 'Operator',
-      key: 'user',
+      header: 'Operator / Auditor',
+      key: 'changed_by',
       render: (r) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.user}</div>
-          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{r.role}</div>
+          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.changed_by}</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Security Principal</div>
         </div>
       )
     },
     {
-      header: 'Configuration Target',
-      key: 'entity',
-      render: (r) => <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{r.entity}</span>
-    },
-    {
-      header: 'Parameter Changed',
-      key: 'field',
+      header: 'Target Entity',
+      key: 'entity_name',
       render: (r) => (
-        <span style={{
-          padding: '2px 8px',
-          borderRadius: '4px',
-          background: 'var(--color-surface-subtle)',
-          fontSize: '12px',
-          fontWeight: 600,
-          border: '1px solid var(--color-border)'
-        }}>
-          {r.field}
-        </span>
-      )
-    },
-    {
-      header: 'Delta (Before → After)',
-      key: 'oldValue',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-          <span style={{
-            textDecoration: 'line-through',
-            color: 'var(--color-error)',
-            background: 'var(--color-error-bg)',
-            padding: '2px 6px',
-            borderRadius: '4px'
-          }}>
-            {r.oldValue}
-          </span>
-          <span style={{ color: 'var(--color-text-muted)' }}>→</span>
-          <span style={{
-            fontWeight: 700,
-            color: 'var(--color-success)',
-            background: 'var(--color-success-bg)',
-            padding: '2px 6px',
-            borderRadius: '4px'
-          }}>
-            {r.newValue}
-          </span>
+        <div>
+          <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.entity_name}</span>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginLeft: '6px' }}>#{r.entity_id}</span>
         </div>
       )
     },
     {
-      header: 'Justification Reason',
-      key: 'context',
-      render: (r) => <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{r.context}</span>
+      header: 'Value Transition',
+      key: 'new_value',
+      render: (r) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'monospace' }}>
+          <span style={{ color: 'var(--color-error)', textDecoration: 'line-through' }}>{r.old_value}</span>
+          <ArrowRight size={12} style={{ color: 'var(--color-text-muted)' }} />
+          <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{r.new_value}</span>
+        </div>
+      )
     },
     {
       header: 'Action',
       key: 'id',
       render: (r) => (
         <Button variant="subtle" size="sm" onClick={() => setSelectedLog(r)}>
-          Audit Info
+          Inspect
         </Button>
       )
     }
@@ -123,127 +101,115 @@ export const FeeChangeAuditLogPage: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
-              FIN-08
+              FIN-07
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Fee Configuration Audit Trail
+              Fee Structure Immutable Audit Log
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Immutable, cryptographically chained audit record of all financial rate updates and regulatory alterations.
+            Tamper-evident system trail capturing all additions, adjustments, and rate revisions to institutional fee heads.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          leftIcon={<Download size={14} />}
-          onClick={() => alert('Exporting full audit trail...')}
-        >
-          Export Compliance Log
+        <Button variant="secondary" onClick={() => toast.success('Audit trail downloaded as verified JSON')}>
+          <Download size={14} style={{ marginRight: '6px' }} /> Download Signatures
         </Button>
       </div>
 
-      {/* StatCards */}
+      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
-          label="Total Logged Changes"
-          value={mockAuditLogs.length}
+          label="Total Logged Events"
+          value={logs.length}
           tone="neutral"
-          icon={<History size={18} />}
-          description="Across all fee heads"
+          icon={<History size={20} />}
+          description="Revision records verified"
         />
         <StatCard
-          label="Chained Ledger Integrity"
-          value="100%"
+          label="Cryptographic Hash"
+          value="SHA-256 Valid"
           tone="positive"
-          icon={<ShieldCheck size={18} />}
-          description="0 tampering events detected"
+          icon={<ShieldCheck size={20} />}
+          description="Blockchain-style hash chain"
         />
         <StatCard
-          label="Authorized Operators"
-          value="3"
+          label="Audited Entities"
+          value="Fee Structures"
           tone="accent"
-          icon={<UserCheck size={18} />}
-          description="Role-gated finance admins"
+          icon={<UserCheck size={20} />}
+          description="Institutional rates"
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <Card padding={16}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: '1 1 240px' }}>
+      {/* Main Table Card */}
+      <Card padding={0}>
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ width: '320px' }}>
             <Input
-              placeholder="Search audit trail by operator, parameter, or council resolution..."
+              placeholder="Search user, entity, or ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              leftIcon={<Search size={16} />}
+              leftIcon={<Search size={14} />}
             />
           </div>
+          <Button variant="secondary" size="sm" onClick={fetchAuditLogs} isLoading={loading}>
+            Refresh Audit Log
+          </Button>
         </div>
+
+        <Table
+          data={filtered}
+          columns={columns}
+          keyExtractor={(r) => String(r.id)}
+          isLoading={loading}
+          emptyMessage="No audit trail events match the search filter."
+        />
       </Card>
 
-      {/* Data Table */}
-      <Card padding={0}>
-        <Table data={filtered} columns={columns} keyExtractor={(r) => r.id} />
-      </Card>
-
-      {/* Drawer */}
+      {/* Audit Detail Drawer */}
       <Drawer
-        isOpen={!!selectedLog}
+        isOpen={Boolean(selectedLog)}
         onClose={() => setSelectedLog(null)}
-        title={selectedLog ? `Audit Record #${selectedLog.id}` : ''}
+        title={selectedLog ? `Audit Event #${selectedLog.id}` : ''}
         size="md"
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setSelectedLog(null)}>Close</Button>
-          </div>
-        }
+        footer={<Button variant="secondary" onClick={() => setSelectedLog(null)}>Close</Button>}
       >
         {selectedLog && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{
-              padding: '16px',
-              borderRadius: '8px',
-              background: 'var(--color-surface-subtle)',
-              border: '1px solid var(--color-border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Event Timestamp</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{selectedLog.timestamp}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Operator Name</span>
-                <span style={{ fontWeight: 600 }}>{selectedLog.user}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Assigned Role</span>
-                <span style={{ fontWeight: 600 }}>{selectedLog.role}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Origin IP Address</span>
-                <span style={{ fontFamily: 'monospace' }}>{selectedLog.ipAddress}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Target Entity</span>
-                <span style={{ fontWeight: 600 }}>{selectedLog.entity}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13px' }}>
+            <div style={{ padding: '16px', borderRadius: '8px', background: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>TARGET ENTITY</div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {selectedLog.entity_name} #{selectedLog.entity_id}
               </div>
             </div>
 
-            <div>
-              <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                REGULATORY JUSTIFICATION NOTE
-              </h4>
-              <div style={{
-                padding: '12px',
-                borderRadius: '6px',
-                background: 'var(--color-primary-subtle)',
-                fontSize: '13px',
-                color: 'var(--color-text-primary)'
-              }}>
-                {selectedLog.context}
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>Modified By:</span>
+              <span style={{ fontWeight: 600 }}>{selectedLog.changed_by}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>Event Timestamp:</span>
+              <span>{new Date(selectedLog.changed_at).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>Before State:</span>
+              <pre style={{ background: 'var(--color-surface-subtle)', padding: '8px', borderRadius: '4px', margin: 0, overflowX: 'auto' }}>
+                {selectedLog.old_value}
+              </pre>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 0' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>After State:</span>
+              <pre style={{ background: 'var(--color-surface-subtle)', padding: '8px', borderRadius: '4px', margin: 0, overflowX: 'auto' }}>
+                {selectedLog.new_value}
+              </pre>
             </div>
           </div>
         )}

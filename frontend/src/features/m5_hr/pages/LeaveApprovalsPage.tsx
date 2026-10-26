@@ -1,52 +1,93 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer } from '@/components/ui'
 import { Check, X, AlertTriangle, Clock, Calendar, CheckCircle, ShieldAlert, User, FileText } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
 
-interface ApprovalRequest {
-  id: string
-  employee: string
-  department: string
-  type: string
-  dates: string
+interface LiveLeaveRequest {
+  id: number
+  employee_id: number
+  leave_type_id: number
+  start_date: string
+  end_date: string
   days: number
-  overlap: boolean
-  overlapDetails?: string
-  submitted: string
   reason: string
-  status: 'Pending' | 'Approved' | 'Rejected'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  decision_by?: number | null
+  decision_date?: string | null
 }
 
-const mockRequests: ApprovalRequest[] = [
-  { id: 'LR-101', employee: 'Dr. Ramesh Kumar', department: 'Computer Science', type: 'Casual Leave', dates: '26 Oct 2026 - 28 Oct 2026', days: 3, overlap: false, submitted: '2026-10-21', reason: 'Attending IEEE international conference as keynote chair.', status: 'Pending' },
-  { id: 'LR-102', employee: 'Prof. Sunita Rao', department: 'Electrical Engineering', type: 'Sick Leave', dates: '25 Oct 2026 - 26 Oct 2026', days: 2, overlap: true, overlapDetails: 'Conflicts with Mid-Term invigilation duty slot #3', submitted: '2026-10-22', reason: 'Medical recovery following acute fever.', status: 'Pending' },
-  { id: 'LR-103', employee: 'Vikram Joshi', department: 'Mechanical Engineering', type: 'Earned Leave', dates: '10 Nov 2026 - 15 Nov 2026', days: 5, overlap: false, submitted: '2026-10-18', reason: 'Family commitment and personal travel.', status: 'Approved' },
-  { id: 'LR-104', employee: 'Neha Gupta', department: 'Civil Engineering', type: 'Casual Leave', dates: '14 Oct 2026 - 15 Oct 2026', days: 2, overlap: false, submitted: '2026-10-10', reason: 'Personal work at hometown.', status: 'Rejected' },
-]
-
 export const LeaveApprovalsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'Pending' | 'Approved' | 'Rejected'>('Pending')
-  const [requests, setRequests] = useState<ApprovalRequest[]>(mockRequests)
-  const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
-  const [notification, setNotification] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING')
+  const [requests, setRequests] = useState<LiveLeaveRequest[]>([])
+  const [employees, setEmployees] = useState<any[]>([])
+  const [leaveTypes, setLeaveTypes] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState<LiveLeaveRequest | null>(null)
+  const [decisionLoading, setDecisionLoading] = useState(false)
 
-  const handleDecision = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
-    setNotification(`Leave request ${id} marked as ${newStatus}.`)
-    setSelectedRequest(null)
-    setTimeout(() => setNotification(null), 3500)
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [leavesRes, empsRes, typesRes] = await Promise.all([
+        apiClient<LiveLeaveRequest[]>('/leaves'),
+        apiClient<any[]>('/employees?limit=200'),
+        apiClient<any[]>('/leave-types')
+      ])
+      setRequests(Array.isArray(leavesRes) ? leavesRes : [])
+      setEmployees(Array.isArray(empsRes) ? empsRes : [])
+      setLeaveTypes(Array.isArray(typesRes) ? typesRes : [])
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fetch leave applications')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const pendingRequests = requests.filter(r => r.status === 'Pending')
-  const approvedRequests = requests.filter(r => r.status === 'Approved')
-  const rejectedRequests = requests.filter(r => r.status === 'Rejected')
-  const overlappingCount = requests.filter(r => r.overlap && r.status === 'Pending').length
+  useEffect(() => {
+    fetchData()
+  }, [])
 
-  const filtered = requests.filter(r => r.status === activeTab)
+  const handleDecision = async (id: number, newStatus: 'APPROVED' | 'REJECTED') => {
+    setDecisionLoading(true)
+    try {
+      await apiClient(`/leaves/${id}/decision`, {
+        method: 'PATCH',
+        data: { status: newStatus }
+      })
+      toast.success(`Leave application #${id} marked as ${newStatus}`)
+      setSelectedRequest(null)
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || `Failed to update leave #${id}`)
+    } finally {
+      setDecisionLoading(false)
+    }
+  }
 
-  const columns: Column<ApprovalRequest>[] = [
+  const getEmployeeName = (empId: number) => {
+    const emp = employees.find(e => e.id === empId || e.employee_id === String(empId))
+    return emp ? `${emp.first_name} ${emp.last_name}` : `Staff #${empId}`
+  }
+
+  const getLeaveTypeName = (typeId: number) => {
+    const lt = leaveTypes.find(t => t.id === typeId)
+    return lt ? lt.name : `Leave Type #${typeId}`
+  }
+
+  const pendingRequests = requests.filter(r => r.status === 'PENDING')
+  const approvedRequests = requests.filter(r => r.status === 'APPROVED')
+  const rejectedRequests = requests.filter(r => r.status === 'REJECTED')
+
+  const filtered = requests.filter(r => {
+    if (activeTab === 'ALL') return true
+    return r.status === activeTab
+  })
+
+  const columns: Column<LiveLeaveRequest>[] = [
     {
-      header: 'Employee',
-      key: 'employee',
+      header: 'Applicant',
+      key: 'employee_id',
       render: (r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -61,53 +102,50 @@ export const LeaveApprovalsPage: React.FC = () => {
             fontWeight: 700,
             fontSize: '12px'
           }}>
-            {r.employee.charAt(0)}
+            <User size={16} />
           </div>
           <div>
-            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.employee}</div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{r.department}</div>
+            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {getEmployeeName(r.employee_id)}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              Emp ID: {r.employee_id}
+            </div>
           </div>
         </div>
       )
     },
-    { header: 'Leave Category', key: 'type', render: (r) => <span style={{ fontWeight: 500 }}>{r.type}</span> },
     {
-      header: 'Duration & Dates',
-      key: 'dates',
+      header: 'Leave Type',
+      key: 'leave_type_id',
+      render: (r) => (
+        <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+          {getLeaveTypeName(r.leave_type_id)}
+        </span>
+      )
+    },
+    {
+      header: 'Schedule & Duration',
+      key: 'start_date',
       render: (r) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.dates}</div>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{r.days} Working {r.days === 1 ? 'Day' : 'Days'}</div>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-primary)', fontWeight: 500 }}>
+            {r.start_date} → {r.end_date}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+            {r.days} working {r.days === 1 ? 'day' : 'days'}
+          </div>
         </div>
       )
     },
     {
-      header: 'Duty Conflicts',
-      key: 'overlap',
+      header: 'Reason',
+      key: 'reason',
       render: (r) => (
-        r.overlap ? (
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontSize: '11px',
-            fontWeight: 700,
-            color: 'var(--color-error)',
-            background: 'var(--color-error-bg)',
-            padding: '2px 8px',
-            borderRadius: '12px'
-          }}>
-            <AlertTriangle size={12} /> Duty Overlap
-          </span>
-        ) : (
-          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>None</span>
-        )
+        <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', maxWidth: '240px', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.reason || '—'}
+        </span>
       )
-    },
-    {
-      header: 'Submitted',
-      key: 'submitted',
-      render: (r) => <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{r.submitted}</span>
     },
     {
       header: 'Status',
@@ -115,7 +153,7 @@ export const LeaveApprovalsPage: React.FC = () => {
       render: (r) => (
         <StatusPill
           label={r.status}
-          status={r.status === 'Approved' ? 'success' : r.status === 'Pending' ? 'warning' : 'error'}
+          status={r.status === 'APPROVED' ? 'success' : r.status === 'PENDING' ? 'warning' : 'error'}
         />
       )
     },
@@ -123,34 +161,30 @@ export const LeaveApprovalsPage: React.FC = () => {
       header: 'Actions',
       key: 'id',
       render: (r) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          {r.status === 'Pending' && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Button variant="subtle" size="sm" onClick={() => setSelectedRequest(r)}>
+            Review
+          </Button>
+          {r.status === 'PENDING' && (
             <>
               <Button
-                size="sm"
                 variant="primary"
-                onClick={() => handleDecision(r.id, 'Approved')}
-                title="Approve Leave"
+                size="sm"
+                onClick={() => handleDecision(r.id, 'APPROVED')}
+                isLoading={decisionLoading}
               >
-                <Check size={13} />
+                Approve
               </Button>
               <Button
-                size="sm"
                 variant="danger"
-                onClick={() => handleDecision(r.id, 'Rejected')}
-                title="Reject Leave"
+                size="sm"
+                onClick={() => handleDecision(r.id, 'REJECTED')}
+                isLoading={decisionLoading}
               >
-                <X size={13} />
+                Reject
               </Button>
             </>
           )}
-          <Button
-            size="sm"
-            variant="subtle"
-            onClick={() => setSelectedRequest(r)}
-          >
-            Review
-          </Button>
         </div>
       )
     }
@@ -159,137 +193,136 @@ export const LeaveApprovalsPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
-              HR-04
-            </span>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Faculty & Staff Leave Approvals
-            </h1>
-          </div>
-          <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Supervise leave applications, inspect academic schedule overlaps, and sanction requests.
-          </p>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
+            HR-07
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+            Leave Applications & HOD Approval Queue
+          </h1>
         </div>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          Review statutory and special leave petitions submitted by university academic and administrative staff.
+        </p>
       </div>
 
-      {notification && (
-        <div style={{
-          padding: '12px 16px',
-          borderRadius: '6px',
-          background: 'var(--color-success-bg)',
-          color: 'var(--color-success)',
-          border: '1px solid var(--color-success)',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <CheckCircle size={16} />
-          {notification}
-        </div>
-      )}
-
-      {/* StatCards */}
+      {/* KPI Stats Strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
           label="Pending Applications"
           value={pendingRequests.length}
           tone="accent"
-          icon={<Clock size={18} />}
-          description="Requiring HOD sanction"
+          icon={<Clock size={20} />}
+          description="Awaiting decision"
         />
         <StatCard
-          label="Schedule Collisions"
-          value={overlappingCount}
-          tone="critical"
-          icon={<ShieldAlert size={18} />}
-          description="Invigilation or lecture overlap"
-        />
-        <StatCard
-          label="Approved This Month"
+          label="Approved This Term"
           value={approvedRequests.length}
           tone="positive"
-          icon={<CheckCircle size={18} />}
-          description="Substitutes assigned"
+          icon={<CheckCircle size={20} />}
+          description="Sanctioned leaves"
         />
         <StatCard
-          label="Rejected Applications"
+          label="Rejected / Cancelled"
           value={rejectedRequests.length}
           tone="neutral"
-          description="Recorded in audit log"
+          icon={<ShieldAlert size={20} />}
+          description="Non-sanctioned requests"
+        />
+        <StatCard
+          label="Total Submissions"
+          value={requests.length}
+          tone="neutral"
+          icon={<FileText size={20} />}
+          description="Institutional records"
         />
       </div>
 
-      {/* Filter Tabs */}
+      {/* Main Table Card */}
       <Card padding={0}>
         <div style={{
-          display: 'flex',
+          padding: '16px 20px',
           borderBottom: '1px solid var(--color-border)',
-          padding: '0 16px',
-          background: 'var(--color-surface)'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}>
-          {[
-            { id: 'Pending' as const, count: pendingRequests.length },
-            { id: 'Approved' as const, count: approvedRequests.length },
-            { id: 'Rejected' as const, count: rejectedRequests.length }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '14px 20px',
-                border: 'none',
-                background: 'transparent',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                borderBottom: activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {tab.id}
-              <span style={{
-                fontSize: '11px',
-                padding: '1px 6px',
-                borderRadius: '10px',
-                background: activeTab === tab.id ? 'var(--color-primary-subtle)' : 'var(--color-surface-subtle)',
-                color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)'
-              }}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
+          {/* Status Tabs */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface-subtle)',
+                  color: activeTab === tab ? '#FFFFFF' : 'var(--color-text-secondary)',
+                  transition: 'all 150ms'
+                }}
+              >
+                {tab === 'ALL' ? 'All Requests' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                {tab === 'PENDING' && pendingRequests.length > 0 && ` (${pendingRequests.length})`}
+              </button>
+            ))}
+          </div>
+
+          <Button variant="secondary" size="sm" onClick={fetchData} isLoading={loading}>
+            Refresh Queue
+          </Button>
         </div>
 
-        <Table data={filtered} columns={columns} keyExtractor={(r) => r.id} />
+        <Table
+          data={filtered}
+          columns={columns}
+          keyExtractor={(r) => String(r.id)}
+          isLoading={loading}
+          emptyMessage="No leave applications match the selected filter."
+        />
       </Card>
 
-      {/* Review Drawer */}
+      {/* Application Review Drawer */}
       <Drawer
-        isOpen={!!selectedRequest}
+        isOpen={Boolean(selectedRequest)}
         onClose={() => setSelectedRequest(null)}
-        title={selectedRequest ? `Leave Request — ${selectedRequest.employee}` : ''}
+        title="Leave Application Dossier"
         size="md"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <Button variant="secondary" onClick={() => setSelectedRequest(null)}>Close</Button>
-            {selectedRequest?.status === 'Pending' && (
-              <>
-                <Button variant="danger" onClick={() => handleDecision(selectedRequest.id, 'Rejected')}>
-                  Reject Request
-                </Button>
-                <Button variant="primary" onClick={() => handleDecision(selectedRequest.id, 'Approved')}>
-                  Sanction & Approve
-                </Button>
-              </>
-            )}
-          </div>
+          selectedRequest && selectedRequest.status === 'PENDING' ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button
+                variant="secondary"
+                onClick={() => setSelectedRequest(null)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="danger"
+                isLoading={decisionLoading}
+                onClick={() => handleDecision(selectedRequest.id, 'REJECTED')}
+              >
+                Reject Request
+              </Button>
+              <Button
+                variant="primary"
+                isLoading={decisionLoading}
+                onClick={() => handleDecision(selectedRequest.id, 'APPROVED')}
+              >
+                Approve Request
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" onClick={() => setSelectedRequest(null)}>
+              Close
+            </Button>
+          )
         }
       >
         {selectedRequest && (
@@ -306,52 +339,27 @@ export const LeaveApprovalsPage: React.FC = () => {
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>APPLICATION NUMBER</div>
                 <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'monospace' }}>
-                  {selectedRequest.id}
+                  LEAVE-REQ-#{selectedRequest.id}
                 </div>
               </div>
-              <StatusPill label={selectedRequest.status} status={selectedRequest.status === 'Approved' ? 'success' : selectedRequest.status === 'Pending' ? 'warning' : 'error'} />
+              <StatusPill
+                label={selectedRequest.status}
+                status={selectedRequest.status === 'APPROVED' ? 'success' : selectedRequest.status === 'PENDING' ? 'warning' : 'error'}
+              />
             </div>
-
-            {selectedRequest.overlap && (
-              <div style={{
-                padding: '12px 16px',
-                borderRadius: '6px',
-                background: 'var(--color-error-bg)',
-                color: 'var(--color-error)',
-                border: '1px solid var(--color-error)',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px'
-              }}>
-                <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong>Institutional Schedule Collision Detected:</strong>
-                  <div>{selectedRequest.overlapDetails}</div>
-                </div>
-              </div>
-            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Staff Name:</span>
-                <span style={{ fontWeight: 600 }}>{selectedRequest.employee}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Department:</span>
-                <span style={{ fontWeight: 600 }}>{selectedRequest.department}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Applicant Staff:</span>
+                <span style={{ fontWeight: 600 }}>{getEmployeeName(selectedRequest.employee_id)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Leave Type:</span>
-                <span style={{ fontWeight: 600 }}>{selectedRequest.type}</span>
+                <span style={{ fontWeight: 600 }}>{getLeaveTypeName(selectedRequest.leave_type_id)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Calendar Window:</span>
-                <span style={{ fontWeight: 600 }}>{selectedRequest.dates} ({selectedRequest.days} days)</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Submission Date:</span>
-                <span style={{ fontWeight: 600 }}>{selectedRequest.submitted}</span>
+                <span style={{ fontWeight: 600 }}>{selectedRequest.start_date} → {selectedRequest.end_date} ({selectedRequest.days} days)</span>
               </div>
             </div>
 
@@ -367,7 +375,7 @@ export const LeaveApprovalsPage: React.FC = () => {
                 color: 'var(--color-text-secondary)',
                 lineHeight: 1.5
               }}>
-                "{selectedRequest.reason}"
+                "{selectedRequest.reason || 'No statement provided.'}"
               </div>
             </div>
           </div>

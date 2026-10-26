@@ -84,26 +84,26 @@ def pay_fee(data: PaymentCreate, svc: M4Service = Depends(get_m4_service), user:
 
 @m4_router.get("/receipts/{id}")
 def get_receipt(id: int, svc: M4Service = Depends(get_m4_service), user: CurrentUser = Depends(require_role(["Student", "Admin"]))):
-    has_admin = "Admin" in user.permission_sets
+    has_admin = any(r.lower() == "admin" for r in user.roles) or "Finance_Admin" in user.permission_sets or "Super_Admin" in user.permission_sets
     return svc.get_receipt(id, user.user_id, has_admin)
 
 @m4_router.get("/me/payments")
-def get_my_payments(svc: M4Service = Depends(get_m4_service), user: CurrentUser = Depends(require_role(["Student"]))):
+def get_my_payments(svc: M4Service = Depends(get_m4_service), user: CurrentUser = Depends(require_role(["Student", "Admin"]))):
     items = svc.get_my_payments(user.user_id)
     return [dict(i._mapping) for i in items]
 
 @m4_router.get("/payments", response_model=PaginatedResponse)
-def get_all_payments(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_permission(["Finance_Admin"]))):
+def get_all_payments(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_role(["Admin", "SuperAdmin"]))):
     items = svc.get_all_payments((page - 1) * page_size, page_size)
     return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}
 
 # --- Reports & Audit ---
 @m4_router.get("/fees/defaulters", response_model=PaginatedResponse)
-def get_fee_defaulters(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_permission(["Finance_Admin"]))):
+def get_fee_defaulters(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_role(["Admin", "SuperAdmin"]))):
     items = svc.get_fee_defaulters((page - 1) * page_size, page_size)
     return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}
 
 @m4_router.get("/audit/fees", response_model=PaginatedResponse)
-def get_fee_audit_logs(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_permission(["Finance_Admin"]))):
+def get_fee_audit_logs(page: int = 1, page_size: int = 20, svc: M4Service = Depends(get_m4_service), _=Depends(require_role(["Admin", "SuperAdmin"]))):
     items = svc.get_fee_audit_logs((page - 1) * page_size, page_size)
     return {"items": [dict(i._mapping) for i in items], "total": len(items), "page": page, "page_size": page_size}

@@ -175,8 +175,11 @@ export const router = createBrowserRouter([
       { path: 'marks', element: <E08MarksEntryPage /> },
       { path: 'results/summary', element: <E12CourseResultSummaryPage /> },
       { path: 'hr/apply-leave', element: <ApplyLeavePage /> },
+      { path: 'apply-leave', element: <ApplyLeavePage /> },
       { path: 'hr/my-leave', element: <MyLeavePage /> },
+      { path: 'my-leave', element: <MyLeavePage /> },
       { path: 'hr/payslips', element: <MyPayslipsPage /> },
+      { path: 'payslips', element: <MyPayslipsPage /> },
     ],
   },
   {

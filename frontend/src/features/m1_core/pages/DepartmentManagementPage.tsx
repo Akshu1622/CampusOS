@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Input, Table, StatusPill, Drawer, EmptyState, StatCard } from '@/components/ui'
+import { Card, Button, Input, Select, Table, StatusPill, Drawer, EmptyState, StatCard } from '@/components/ui'
 import { apiClient } from '@/api/client'
 import { toast } from 'react-hot-toast'
 import { Search, Plus, MoreHorizontal, Building2, BookOpen, Layers, CheckCircle2, X } from 'lucide-react'
 
 export function DepartmentManagementPage() {
   const [departments, setDepartments] = useState<any[]>([])
+  const [employees, setEmployees] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -24,8 +25,18 @@ export function DepartmentManagementPage() {
     }
   }
 
+  const fetchEmployees = async () => {
+    try {
+      const res = await apiClient<any[]>(`/employees?limit=200`)
+      setEmployees(Array.isArray(res) ? res : [])
+    } catch (err: any) {
+      console.warn('Failed to load employees for HOD dropdown', err)
+    }
+  }
+
   useEffect(() => {
     fetchDepartments()
+    fetchEmployees()
   }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -227,11 +238,17 @@ export function DepartmentManagementPage() {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
             required 
           />
-          <Input 
+          <Select 
             label="Appointed Head of Department (HOD)" 
-            placeholder="e.g. EMP-2020-0001 or faculty name (Optional)" 
             value={formData.head} 
-            onChange={(e) => setFormData({ ...formData, head: e.target.value })} 
+            onChange={(e) => setFormData({ ...formData, head: e.target.value })}
+            options={[
+              { value: '', label: '-- None (Unassigned) --' },
+              ...employees.map(emp => ({
+                value: emp.employee_id,
+                label: `${emp.first_name} ${emp.last_name} (${emp.employee_id})`
+              }))
+            ]}
           />
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
             <Button variant="secondary" type="button" onClick={() => setIsDrawerOpen(false)}>Cancel</Button>

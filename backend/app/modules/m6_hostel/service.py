@@ -104,6 +104,10 @@ def get_my_allocation(db: Session, current_user: CurrentUser) -> schemas.HostelA
         raise APIError("NOT_FOUND", "Active allocation not found", status.HTTP_404_NOT_FOUND)
     return schemas.HostelAllocationResponse(**a)
 
+def get_allocations(db: Session, status: Optional[str] = None, room_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[schemas.HostelAllocationResponse]:
+    allocs = repository.get_allocations(db, status=status, room_id=room_id, skip=skip, limit=limit)
+    return [schemas.HostelAllocationResponse(**a) for a in allocs]
+
 # --- Occupancy ---
 def get_occupancy(db: Session) -> List[schemas.HostelOccupancyResponse]:
     occ = repository.get_occupancy(db)

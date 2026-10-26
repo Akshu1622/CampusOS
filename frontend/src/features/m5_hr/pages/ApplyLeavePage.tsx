@@ -1,50 +1,111 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, Button, Input, Select, Alert, StatCard } from '@/components/ui'
-import { Send, ArrowLeft, CheckCircle, Clock, HeartPulse, Sparkles } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
+import { Send, ArrowLeft, Clock, HeartPulse, Sparkles, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+
+interface LeaveType {
+  id: number
+  name: string
+  is_paid: boolean
+}
+
+interface LeaveBalance {
+  leave_type_id: number
+  leave_type_name: string
+  entitled: number
+  balance: number
+}
 
 export const ApplyLeavePage: React.FC = () => {
   const navigate = useNavigate()
-  const [leaveType, setLeaveType] = useState('casual')
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
+  const [balances, setBalances] = useState<LeaveBalance[]>([])
+  const [selectedTypeId, setSelectedTypeId] = useState<number | ''>('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [reason, setReason] = useState('')
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const getBalance = (type: string) => {
-    switch(type) {
-      case 'casual': return 8
-      case 'sick': return 8
-      case 'earned': return 15
-      default: return 0
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        const [typesRes, balancesRes] = await Promise.all([
+          apiClient<LeaveType[]>('/leave-types'),
+          apiClient<LeaveBalance[]>('/leaves/me/balance?year=2026')
+        ])
+        setLeaveTypes(Array.isArray(typesRes) ? typesRes : [])
+        setBalances(Array.isArray(balancesRes) ? balancesRes : [])
+        if (Array.isArray(typesRes) && typesRes.length > 0) {
+          setSelectedTypeId(typesRes[0].id)
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to load leave information')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+    fetchData()
+  }, [])
+
+  const currentBalance = balances.find(b => b.leave_type_id === Number(selectedTypeId))
+  const availableDays = currentBalance ? currentBalance.balance : 0
 
   const calculateDays = () => {
     if (!fromDate || !toDate) return 0
     const start = new Date(fromDate)
     const end = new Date(toDate)
+    if (end < start) return 0
     const diffTime = Math.abs(end.getTime() - start.getTime())
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
   }
 
   const days = calculateDays()
-  const balance = getBalance(leaveType)
-  const sufficientBalance = balance >= days
+  const sufficientBalance = availableDays >= days
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sufficientBalance) return
-    setIsSubmitted(true)
-    setTimeout(() => {
-      navigate('/faculty/my-leave')
-    }, 2000)
+    if (!selectedTypeId || !fromDate || !toDate || !reason.trim()) {
+      toast.error('Please fill in all required fields.')
+      return
+    }
+    if (days <= 0) {
+      toast.error('End date must be on or after start date.')
+      return
+    }
+    if (!sufficientBalance) {
+      toast.error(`Insufficient leave balance. You have ${availableDays} days available.`)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await apiClient('/leaves', {
+        method: 'POST',
+        data: {
+          leave_type_id: Number(selectedTypeId),
+          start_date: fromDate,
+          end_date: toDate,
+          days,
+          reason: reason.trim()
+        }
+      })
+      toast.success('Leave application submitted successfully')
+      navigate('/faculty/hr/my-leave')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit leave application')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-subtle)', padding: '2px 6px', borderRadius: '4px' }}>
@@ -55,43 +116,34 @@ export const ApplyLeavePage: React.FC = () => {
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            File a formal leave request for departmental review and peer substitution.
+            File a formal leave request for departmental review and statutory tracking.
           </p>
         </div>
-        <Button variant="subtle" size="sm" leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/faculty/my-leave')}>
-          Back to My Leave
+        <Button variant="subtle" size="sm" onClick={() => navigate('/faculty/hr/my-leave')}>
+          <ArrowLeft size={14} style={{ marginRight: '6px' }} /> Back to My Leave
         </Button>
       </div>
 
-      {isSubmitted && (
-        <Alert variant="info" title="Application Dispatched">
-          Your leave request has been submitted to your Department Head. Redirecting to your dashboard...
-        </Alert>
-      )}
-
       {/* Leave Balances Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-        <StatCard
-          label="Casual Leave"
-          value="8 Days"
-          tone={leaveType === 'casual' ? 'accent' : 'neutral'}
-          icon={<Clock size={16} />}
-          description="Of 12 total"
-        />
-        <StatCard
-          label="Sick Leave"
-          value="8 Days"
-          tone={leaveType === 'sick' ? 'accent' : 'neutral'}
-          icon={<HeartPulse size={16} />}
-          description="Of 10 total"
-        />
-        <StatCard
-          label="Earned Leave"
-          value="15 Days"
-          tone={leaveType === 'earned' ? 'accent' : 'neutral'}
-          icon={<Sparkles size={16} />}
-          description="Full entitlement"
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        {balances.map(b => {
+          const isSelected = Number(selectedTypeId) === b.leave_type_id
+          return (
+            <div 
+              key={b.leave_type_id}
+              onClick={() => setSelectedTypeId(b.leave_type_id)}
+              style={{ cursor: 'pointer' }}
+            >
+              <StatCard
+                label={b.leave_type_name}
+                value={`${b.balance} Days`}
+                tone={isSelected ? 'accent' : 'neutral'}
+                icon={b.leave_type_name.includes('Sick') ? <HeartPulse size={16} /> : b.leave_type_name.includes('Earned') ? <Sparkles size={16} /> : <Clock size={16} />}
+                description={`Of ${b.entitled} total quota`}
+              />
+            </div>
+          )
+        })}
       </div>
 
       <Card padding={24}>
@@ -101,13 +153,15 @@ export const ApplyLeavePage: React.FC = () => {
               Leave Type <span style={{ color: 'var(--color-error)' }}>*</span>
             </label>
             <Select
-              value={leaveType}
-              onChange={(e) => setLeaveType(e.target.value)}
-              options={[
-                { value: 'casual', label: 'Casual Leave (Available Balance: 8 Days)' },
-                { value: 'sick', label: 'Sick Leave (Available Balance: 8 Days)' },
-                { value: 'earned', label: 'Earned Leave (Available Balance: 15 Days)' },
-              ]}
+              value={String(selectedTypeId)}
+              onChange={(e) => setSelectedTypeId(Number(e.target.value))}
+              options={leaveTypes.map(lt => {
+                const bal = balances.find(b => b.leave_type_id === lt.id)
+                return {
+                  value: String(lt.id),
+                  label: `${lt.name} (Available: ${bal ? bal.balance : 0} Days)`
+                }
+              })}
             />
           </div>
 
@@ -143,13 +197,13 @@ export const ApplyLeavePage: React.FC = () => {
               alignItems: 'center',
               padding: '12px',
               borderRadius: '6px',
-              background: sufficientBalance ? 'var(--color-surface-subtle)' : 'var(--color-error-bg)',
+              background: sufficientBalance ? 'var(--color-surface-subtle)' : 'rgba(239, 68, 68, 0.1)',
               border: `1px solid ${sufficientBalance ? 'var(--color-border)' : 'var(--color-error)'}`,
               fontSize: '13px'
             }}>
               <span style={{ color: 'var(--color-text-secondary)' }}>Calculated Duration:</span>
               <strong style={{ color: sufficientBalance ? 'var(--color-text-primary)' : 'var(--color-error)' }}>
-                {days} {days === 1 ? 'Working Day' : 'Working Days'} {!sufficientBalance && `(Exceeds balance of ${balance})`}
+                {days} {days === 1 ? 'Working Day' : 'Working Days'} {!sufficientBalance && `(Exceeds balance of ${availableDays})`}
               </strong>
             </div>
           )}
@@ -180,14 +234,14 @@ export const ApplyLeavePage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '8px' }}>
-            <Button variant="secondary" onClick={() => navigate('/faculty/my-leave')}>Cancel</Button>
+            <Button variant="secondary" type="button" onClick={() => navigate('/faculty/hr/my-leave')}>Cancel</Button>
             <Button
               variant="primary"
               type="submit"
-              disabled={!fromDate || !toDate || !reason || !sufficientBalance || isSubmitted}
-              leftIcon={<Send size={14} />}
+              disabled={!fromDate || !toDate || !reason.trim() || !sufficientBalance || isSubmitting}
+              isLoading={isSubmitting}
             >
-              Dispatch Application
+              <Send size={14} style={{ marginRight: '6px' }} /> Submit Leave Application
             </Button>
           </div>
         </form>

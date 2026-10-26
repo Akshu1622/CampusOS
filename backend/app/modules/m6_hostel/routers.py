@@ -75,6 +75,10 @@ def vacate_room(alloc_id: int, db: Session = Depends(get_db), user: CurrentUser 
 def get_my_hostel(db: Session = Depends(get_db), user: CurrentUser = student_only):
     return service.get_my_allocation(db, user)
 
+@router.get("/hostel-allocations", response_model=List[schemas.HostelAllocationResponse])
+def get_allocations(status: Optional[str] = None, room_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: CurrentUser = Depends(hostel_admin)):
+    return service.get_allocations(db, status=status, room_id=room_id, skip=skip, limit=limit)
+
 # --- Requests ---
 @router.post("/hostel-requests", response_model=schemas.HostelRequestResponse, status_code=status.HTTP_201_CREATED)
 def create_hostel_request(data: schemas.HostelRequestCreate, db: Session = Depends(get_db), user: CurrentUser = student_only):

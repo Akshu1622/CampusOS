@@ -83,6 +83,7 @@ export const useAllocateRoom = () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
       queryClient.invalidateQueries({ queryKey: ['occupancy'] })
       queryClient.invalidateQueries({ queryKey: ['my_hostel'] })
+      queryClient.invalidateQueries({ queryKey: ['allocations'] })
       toast.success('Room allocated successfully')
     },
     onError: (err: any) => toast.error(err.message || 'Failed to allocate room')
@@ -97,9 +98,17 @@ export const useVacateRoom = () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
       queryClient.invalidateQueries({ queryKey: ['occupancy'] })
       queryClient.invalidateQueries({ queryKey: ['my_hostel'] })
+      queryClient.invalidateQueries({ queryKey: ['allocations'] })
       toast.success('Room vacated successfully')
     },
     onError: (err: any) => toast.error(err.message || 'Failed to vacate room')
+  })
+}
+
+export const useAllocations = (params?: { status?: api.AllocationStatus; room_id?: number }) => {
+  return useQuery({
+    queryKey: ['allocations', params],
+    queryFn: () => api.getAllocations(params)
   })
 }
 
