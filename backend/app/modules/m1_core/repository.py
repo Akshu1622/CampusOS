@@ -136,7 +136,7 @@ class M1Repository:
                 ua.id, ua.username, ua.status, ua.last_login,
                 ua.student_id, ua.employee_id,
                 COALESCE(CONCAT(s.first_name, ' ', s.last_name), CONCAT(e.first_name, ' ', e.last_name)) AS full_name,
-                COALESCE(s.email, e.email) AS email,
+                COALESCE(s.email, CONCAT(LOWER(e.first_name), '.', LOWER(e.last_name), '@campus.edu')) AS email,
                 CASE WHEN ua.student_id IS NOT NULL THEN 'student'
                      WHEN ua.employee_id IS NOT NULL THEN 'employee'
                      ELSE NULL END AS linked_type
@@ -157,8 +157,8 @@ class M1Repository:
                 ua.id, ua.username, ua.status, ua.last_login,
                 ua.student_id, ua.employee_id,
                 COALESCE(CONCAT(s.first_name, ' ', s.last_name), CONCAT(e.first_name, ' ', e.last_name)) AS full_name,
-                COALESCE(s.email, e.email) AS email,
-                COALESCE(s.phone, e.phone) AS phone,
+                COALESCE(s.email, CONCAT(LOWER(e.first_name), '.', LOWER(e.last_name), '@campus.edu')) AS email,
+                s.phone AS phone,
                 CASE WHEN ua.student_id IS NOT NULL THEN 'student'
                      WHEN ua.employee_id IS NOT NULL THEN 'employee'
                      ELSE NULL END AS linked_type,
@@ -539,13 +539,5 @@ class M1Repository:
 
     def update_employee_contact(self, employee_id: int, email: Optional[str], phone: Optional[str]):
         """Update contact-only fields for faculty /me profile edit."""
-        parts = []
-        params: Dict[str, Any] = {"id": employee_id}
-        if email is not None:
-            parts.append("email = :email"); params["email"] = email
-        if phone is not None:
-            parts.append("phone = :phone"); params["phone"] = phone
-        if not parts:
-            return
-        self.db.execute(text(f"UPDATE employee SET {', '.join(parts)} WHERE id = :id"), params)
-        self.db.commit()
+        # Employee master schema (05_hr.sql) does not store email/phone
+        return
