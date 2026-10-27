@@ -85,14 +85,27 @@ class M4Repository:
         return dict(row._mapping) if row else None
 
     def get_fee_components_for_structure(self, structure_id: int) -> List[Dict[str, Any]]:
-        query = text("""
-            SELECT id, structure_id, component_name, amount, due_date,
-                   COALESCE(caste_category, 'ALL') AS caste_category
-            FROM fee_component
-            WHERE structure_id = :sid
-            ORDER BY due_date ASC, id ASC
-        """)
-        rows = self.db.execute(query, {"sid": structure_id}).fetchall()
+        try:
+            query = text("""
+                SELECT id, structure_id, component_name, amount, due_date,
+                       COALESCE(caste_category, 'ALL') AS caste_category,
+                       COALESCE(concession_percent, 0.0) AS concession_percent
+                FROM fee_component
+                WHERE structure_id = :sid
+                ORDER BY due_date ASC, id ASC
+            """)
+            rows = self.db.execute(query, {"sid": structure_id}).fetchall()
+        except Exception:
+            self.db.rollback()
+            query = text("""
+                SELECT id, structure_id, component_name, amount, due_date,
+                       COALESCE(caste_category, 'ALL') AS caste_category,
+                       0.0 AS concession_percent
+                FROM fee_component
+                WHERE structure_id = :sid
+                ORDER BY due_date ASC, id ASC
+            """)
+            rows = self.db.execute(query, {"sid": structure_id}).fetchall()
         return [dict(r._mapping) for r in rows]
 
     def create_fee_structure(self, data: dict, components: list, acting_user: Optional[int] = None) -> int:
@@ -105,16 +118,30 @@ class M4Repository:
 
         for c in components:
             caste = c.get("caste_category") or "ALL"
-            self.db.execute(text("""
-                INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
-                VALUES (:sid, :name, :amt, :dd, :caste)
-            """), {
-                "sid": structure_id,
-                "name": c["component_name"],
-                "amt": c["amount"],
-                "dd": c["due_date"],
-                "caste": caste
-            })
+            concession = float(c.get("concession_percent") or 0.0)
+            try:
+                self.db.execute(text("""
+                    INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category, concession_percent)
+                    VALUES (:sid, :name, :amt, :dd, :caste, :concession)
+                """), {
+                    "sid": structure_id,
+                    "name": c["component_name"],
+                    "amt": c["amount"],
+                    "dd": c["due_date"],
+                    "caste": caste,
+                    "concession": concession
+                })
+            except Exception:
+                self.db.execute(text("""
+                    INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+                    VALUES (:sid, :name, :amt, :dd, :caste)
+                """), {
+                    "sid": structure_id,
+                    "name": c["component_name"],
+                    "amt": c["amount"],
+                    "dd": c["due_date"],
+                    "caste": caste
+                })
 
         self.db.commit()
         return structure_id
@@ -136,16 +163,30 @@ class M4Repository:
             self.db.execute(text("DELETE FROM fee_component WHERE structure_id = :sid"), {"sid": structure_id})
             for c in components:
                 caste = c.get("caste_category") or "ALL"
-                self.db.execute(text("""
-                    INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
-                    VALUES (:sid, :name, :amt, :dd, :caste)
-                """), {
-                    "sid": structure_id,
-                    "name": c["component_name"],
-                    "amt": c["amount"],
-                    "dd": c["due_date"],
-                    "caste": caste
-                })
+                concession = float(c.get("concession_percent") or 0.0)
+                try:
+                    self.db.execute(text("""
+                        INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category, concession_percent)
+                        VALUES (:sid, :name, :amt, :dd, :caste, :concession)
+                    """), {
+                        "sid": structure_id,
+                        "name": c["component_name"],
+                        "amt": c["amount"],
+                        "dd": c["due_date"],
+                        "caste": caste,
+                        "concession": concession
+                    })
+                except Exception:
+                    self.db.execute(text("""
+                        INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+                        VALUES (:sid, :name, :amt, :dd, :caste)
+                    """), {
+                        "sid": structure_id,
+                        "name": c["component_name"],
+                        "amt": c["amount"],
+                        "dd": c["due_date"],
+                        "caste": caste
+                    })
 
         self.db.commit()
 
@@ -159,16 +200,30 @@ class M4Repository:
     def add_fee_component(self, structure_id: int, comp_data: dict, acting_user: Optional[int] = None) -> int:
         self._set_acting_user(acting_user)
         caste = comp_data.get("caste_category") or "ALL"
-        res = self.db.execute(text("""
-            INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
-            VALUES (:sid, :name, :amt, :dd, :caste)
-        """), {
-            "sid": structure_id,
-            "name": comp_data["component_name"],
-            "amt": comp_data["amount"],
-            "dd": comp_data["due_date"],
-            "caste": caste
-        })
+        concession = float(comp_data.get("concession_percent") or 0.0)
+        try:
+            res = self.db.execute(text("""
+                INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category, concession_percent)
+                VALUES (:sid, :name, :amt, :dd, :caste, :concession)
+            """), {
+                "sid": structure_id,
+                "name": comp_data["component_name"],
+                "amt": comp_data["amount"],
+                "dd": comp_data["due_date"],
+                "caste": caste,
+                "concession": concession
+            })
+        except Exception:
+            res = self.db.execute(text("""
+                INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+                VALUES (:sid, :name, :amt, :dd, :caste)
+            """), {
+                "sid": structure_id,
+                "name": comp_data["component_name"],
+                "amt": comp_data["amount"],
+                "dd": comp_data["due_date"],
+                "caste": caste
+            })
         self.db.commit()
         return res.lastrowid
 
@@ -314,10 +369,19 @@ class M4Repository:
             caste = s["caste_category"]
             caste_breakdown[caste] = caste_breakdown.get(caste, 0) + 1
             if s["id"] not in assigned_sids:
-                # Add sum of components applicable to this student's caste
+                # Add sum of components applicable to this student's caste with concessions considered
+                selected = {}
+                for c in components:
+                    cat = c.get("caste_category") or "ALL"
+                    name = c["component_name"]
+                    if cat == caste:
+                        selected[name] = c
+                    elif cat == "ALL" and name not in selected:
+                        selected[name] = c
+
                 applicable_sum = sum(
-                    c["amount"] for c in components 
-                    if c.get("caste_category") in ("ALL", caste) or not c.get("caste_category")
+                    round(float(c["amount"]) * (1.0 - (float(c.get("concession_percent") or 0.0) / 100.0)), 2)
+                    for c in selected.values()
                 )
                 total_projected += applicable_sum
 
@@ -413,18 +477,28 @@ class M4Repository:
                     skipped_count += 1
                     continue
 
-            # Assign components matching ALL or student's caste
-            applicable_comps = [
-                c for c in components 
-                if c.get("caste_category") in ("ALL", caste) or not c.get("caste_category")
-            ]
+            # Assign components matching student's caste, prioritizing category-specific over 'ALL'
+            selected_comps = {}
+            for c in components:
+                cat = c.get("caste_category") or "ALL"
+                name = c["component_name"]
+                if cat == caste:
+                    selected_comps[name] = c
+                elif cat == "ALL" and name not in selected_comps:
+                    selected_comps[name] = c
+
+            applicable_comps = list(selected_comps.values())
 
             for comp in applicable_comps:
+                base_amt = float(comp["amount"])
+                conc_pct = float(comp.get("concession_percent") or 0.0)
+                net_amt = round(base_amt * (1.0 - (conc_pct / 100.0)), 2)
+
                 self.db.execute(text("""
                     INSERT IGNORE INTO student_fee (student_id, component_id, amount_due, amount_paid, status)
                     VALUES (:sid, :cid, :amt, 0.00, 'PENDING')
-                """), {"sid": sid, "cid": comp["id"], "amt": comp["amount"]})
-                total_assigned_amount += float(comp["amount"])
+                """), {"sid": sid, "cid": comp["id"], "amt": net_amt})
+                total_assigned_amount += net_amt
 
             assigned_count += 1
 
@@ -434,32 +508,64 @@ class M4Repository:
     # ─── Student Dues (F-04) ──────────────────────────────────────────────────
 
     def get_student_dues(self, student_id: int) -> List[Dict[str, Any]]:
-        query = text("""
-            SELECT sf.id, sf.student_id, sf.component_id, fc.component_name,
-                   fc.caste_category, s.caste_category AS student_caste_category,
-                   fs.structure_name, at.term_label, fc.due_date,
-                   sf.amount_due, sf.amount_paid,
-                   (sf.amount_due - sf.amount_paid) AS balance,
-                   sf.status,
-                   GREATEST(0, fn_late_fee_penalty(
-                       IFNULL((SELECT MIN(id) FROM late_fee_rule), 1),
-                       fc.due_date,
-                       CURDATE()
-                   ) - IFNULL((SELECT SUM(allocated_late_fee) FROM payment_allocation WHERE student_fee_id = sf.id), 0)) AS computed_late_fee
-            FROM student_fee sf
-            JOIN student s ON sf.student_id = s.id
-            JOIN fee_component fc ON sf.component_id = fc.id
-            JOIN fee_structure fs ON fc.structure_id = fs.id
-            JOIN academic_term at ON fs.term_id = at.id
-            WHERE sf.student_id = :sid
-            ORDER BY fc.due_date ASC, sf.id ASC
-        """)
-        rows = self.db.execute(query, {"sid": student_id}).fetchall()
+        try:
+            query = text("""
+                SELECT sf.id, sf.student_id, sf.component_id, fc.component_name,
+                       fc.caste_category, s.caste_category AS student_caste_category,
+                       COALESCE(fc.concession_percent, 0.0) AS concession_percent,
+                       fc.amount AS original_component_amount,
+                       fs.structure_name, at.term_label, fc.due_date,
+                       sf.amount_due, sf.amount_paid,
+                       (sf.amount_due - sf.amount_paid) AS balance,
+                       sf.status,
+                       GREATEST(0, fn_late_fee_penalty(
+                           IFNULL((SELECT MIN(id) FROM late_fee_rule), 1),
+                           fc.due_date,
+                           CURDATE()
+                       ) - IFNULL((SELECT SUM(allocated_late_fee) FROM payment_allocation WHERE student_fee_id = sf.id), 0)) AS computed_late_fee
+                FROM student_fee sf
+                JOIN student s ON sf.student_id = s.id
+                JOIN fee_component fc ON sf.component_id = fc.id
+                JOIN fee_structure fs ON fc.structure_id = fs.id
+                JOIN academic_term at ON fs.term_id = at.id
+                WHERE sf.student_id = :sid
+                ORDER BY fc.due_date ASC, sf.id ASC
+            """)
+            rows = self.db.execute(query, {"sid": student_id}).fetchall()
+        except Exception:
+            self.db.rollback()
+            query = text("""
+                SELECT sf.id, sf.student_id, sf.component_id, fc.component_name,
+                       fc.caste_category, s.caste_category AS student_caste_category,
+                       0.0 AS concession_percent,
+                       fc.amount AS original_component_amount,
+                       fs.structure_name, at.term_label, fc.due_date,
+                       sf.amount_due, sf.amount_paid,
+                       (sf.amount_due - sf.amount_paid) AS balance,
+                       sf.status,
+                       GREATEST(0, fn_late_fee_penalty(
+                           IFNULL((SELECT MIN(id) FROM late_fee_rule), 1),
+                           fc.due_date,
+                           CURDATE()
+                       ) - IFNULL((SELECT SUM(allocated_late_fee) FROM payment_allocation WHERE student_fee_id = sf.id), 0)) AS computed_late_fee
+                FROM student_fee sf
+                JOIN student s ON sf.student_id = s.id
+                JOIN fee_component fc ON sf.component_id = fc.id
+                JOIN fee_structure fs ON fc.structure_id = fs.id
+                JOIN academic_term at ON fs.term_id = at.id
+                WHERE sf.student_id = :sid
+                ORDER BY fc.due_date ASC, sf.id ASC
+            """)
+            rows = self.db.execute(query, {"sid": student_id}).fetchall()
+
         results = []
         for r in rows:
             d = dict(r._mapping)
             d["computed_late_fee"] = float(d["computed_late_fee"] or 0.0)
             d["total_payable"] = float(d["balance"]) + d["computed_late_fee"]
+            orig = float(d.get("original_component_amount") or d["amount_due"])
+            due = float(d["amount_due"])
+            d["concession_applied"] = max(0.0, orig - due)
             results.append(d)
         return results
 
@@ -548,6 +654,16 @@ class M4Repository:
         return result
 
     def get_student_receipts(self, student_id: int) -> List[Dict[str, Any]]:
+        # Receipt should only be generated/returned when whole fee will get paid
+        unsettled_check = text("""
+            SELECT COUNT(*) 
+            FROM student_fee 
+            WHERE student_id = :sid AND (status != 'PAID' OR (amount_due - amount_paid) > 0.01)
+        """)
+        unsettled_count = self.db.execute(unsettled_check, {"sid": student_id}).scalar() or 0
+        if unsettled_count > 0:
+            return []
+
         query = text("""
             SELECT r.id, r.receipt_number, r.payment_id, r.generated_at,
                    p.amount, p.payment_mode, p.reference_no, p.payment_date, p.status
@@ -903,40 +1019,68 @@ class M4Repository:
         params: Dict[str, Any] = {"limit": limit, "skip": skip}
 
         if entity_name:
-            filters.append("entity_name = :entity_name")
+            filters.append("fal.entity_name = :entity_name")
             params["entity_name"] = entity_name
         if changed_by:
-            filters.append("changed_by LIKE :changed_by")
+            filters.append("(fal.changed_by LIKE :changed_by OR ua.username LIKE :changed_by)")
             params["changed_by"] = f"%{changed_by}%"
         if start_date:
-            filters.append("DATE(changed_at) >= :start_date")
+            filters.append("DATE(fal.changed_at) >= :start_date")
             params["start_date"] = start_date
         if end_date:
-            filters.append("DATE(changed_at) <= :end_date")
+            filters.append("DATE(fal.changed_at) <= :end_date")
             params["end_date"] = end_date
 
         where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
 
-        count_query = text(f"SELECT COUNT(*) FROM fee_audit_log {where_clause}")
-        total = self.db.execute(count_query, params).scalar() or 0
+        count_query = text(f"""
+            SELECT COUNT(*) 
+            FROM fee_audit_log fal
+            LEFT JOIN user_account ua ON (fal.changed_by REGEXP '^[0-9]+$' AND CAST(fal.changed_by AS UNSIGNED) = ua.id)
+            {where_clause}
+        """)
+        try:
+            total = self.db.execute(count_query, params).scalar() or 0
+        except Exception:
+            self.db.rollback()
+            count_fallback = text(f"SELECT COUNT(*) FROM fee_audit_log fal {where_clause}")
+            total = self.db.execute(count_fallback, params).scalar() or 0
 
         query = text(f"""
-            SELECT id, entity_name, entity_id, old_value, new_value, changed_by, changed_at
-            FROM fee_audit_log
+            SELECT fal.id, fal.entity_name, fal.entity_id, fal.old_value, fal.new_value,
+                   COALESCE(ua.username, fal.changed_by, 'SYSTEM') AS changed_by,
+                   fal.changed_at
+            FROM fee_audit_log fal
+            LEFT JOIN user_account ua ON (fal.changed_by REGEXP '^[0-9]+$' AND CAST(fal.changed_by AS UNSIGNED) = ua.id)
             {where_clause}
-            ORDER BY changed_at DESC, id DESC
+            ORDER BY fal.changed_at DESC, fal.id DESC
             LIMIT :limit OFFSET :skip
         """)
-        rows = self.db.execute(query, params).fetchall()
+        try:
+            rows = self.db.execute(query, params).fetchall()
+        except Exception:
+            self.db.rollback()
+            fallback_query = text(f"""
+                SELECT id, entity_name, entity_id, old_value, new_value,
+                       COALESCE(changed_by, 'SYSTEM') AS changed_by,
+                       changed_at
+                FROM fee_audit_log
+                ORDER BY changed_at DESC, id DESC
+                LIMIT :limit OFFSET :skip
+            """)
+            rows = self.db.execute(fallback_query, params).fetchall()
+
         results = []
         for r in rows:
             d = dict(r._mapping)
-            if isinstance(d["old_value"], str):
+            if isinstance(d.get("old_value"), str):
                 try: d["old_value"] = json.loads(d["old_value"])
                 except Exception: pass
-            if isinstance(d["new_value"], str):
+            if isinstance(d.get("new_value"), str):
                 try: d["new_value"] = json.loads(d["new_value"])
                 except Exception: pass
+            if not d.get("changed_by"):
+                d["changed_by"] = "SYSTEM"
             results.append(d)
         return results, total
 

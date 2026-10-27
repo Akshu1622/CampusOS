@@ -284,10 +284,10 @@ export const getMyTeaching = () =>
 
 // Master Lookups
 export const getDepartments = () =>
-  apiClient<Department[]>('/departments')
+  apiClient<any>('/departments').then((res: any) => (Array.isArray(res) ? res : res?.items || []))
 
 export const getPrograms = () =>
-  apiClient<Program[]>('/programs')
+  apiClient<any>('/programs').then((res: any) => (Array.isArray(res) ? res : res?.items || []))
 
 export const getTerms = () =>
   apiClient<AcademicTerm[]>('/terms')

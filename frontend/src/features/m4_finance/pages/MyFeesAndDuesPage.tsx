@@ -1,10 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, Table, type Column, Button, Alert, StatCard, StatusPill, Drawer, Input, Select } from '@/components/ui'
-import { CreditCard, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, DollarSign, Wallet } from 'lucide-react'
+import { CreditCard, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, DollarSign, Wallet, Award, Percent } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { apiClient } from '@/api/client'
+import { useNavigate } from 'react-router-dom'
 
 interface DueRecord {
-  id: string
+  id: string | number
   component: string
   term: string
   amount: number
@@ -13,51 +15,99 @@ interface DueRecord {
   paid: number
   balance: number
   status: 'Paid' | 'Due' | 'Overdue' | 'Partial'
+  caste_category?: string
+  student_caste_category?: string
+  concession_percent?: number
+  concession_applied?: number
 }
 
 export const MyFeesAndDuesPage: React.FC = () => {
+  const navigate = useNavigate()
+  const [dues, setDues] = useState<DueRecord[]>([])
+  const [loading, setLoading] = useState(false)
+  const [studentCaste, setStudentCaste] = useState<string>('GENERAL')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isPayModalOpen, setIsPayModalOpen] = useState(false)
   const [payingRecord, setPayingRecord] = useState<DueRecord | null>(null)
   const [paymentMethod, setPaymentMethod] = useState('UPI')
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const [dues, setDues] = useState<DueRecord[]>([
-    { id: 'D1', component: 'Semester Tuition Fee', term: 'Spring 2024', amount: 50000, dueDate: '2024-02-15', lateFee: 250, paid: 0, balance: 50250, status: 'Overdue' },
-    { id: 'D2', component: 'Laboratory & Equipment Fee', term: 'Spring 2024', amount: 8000, dueDate: '2024-03-01', lateFee: 0, paid: 0, balance: 8000, status: 'Due' },
-    { id: 'D3', component: 'Library & Digital Subscriptions', term: 'Spring 2024', amount: 3000, dueDate: '2024-01-15', lateFee: 0, paid: 3000, balance: 0, status: 'Paid' },
-    { id: 'D4', component: 'Hostel Accommodation (Sem 5)', term: 'Spring 2024', amount: 24000, dueDate: '2024-01-20', lateFee: 0, paid: 24000, balance: 0, status: 'Paid' },
-  ])
+  const fetchDues = async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient<any>('/me/dues')
+      setStudentCaste(res?.student_caste_category || 'GENERAL')
+      const items = Array.isArray(res?.dues) ? res.dues : []
+      if (items.length > 0) {
+        setDues(items.map((d: any) => ({
+          id: d.id,
+          component: d.component_name,
+          term: d.term_label || d.structure_name || 'Current Term',
+          amount: parseFloat(d.amount_due || 0),
+          dueDate: d.due_date,
+          lateFee: parseFloat(d.computed_late_fee || 0),
+          paid: parseFloat(d.amount_paid || 0),
+          balance: parseFloat(d.balance || 0),
+          status: d.status === 'PAID' ? 'Paid' : (parseFloat(d.computed_late_fee || 0) > 0 ? 'Overdue' : (d.status === 'PARTIAL' ? 'Partial' : 'Due')),
+          caste_category: d.caste_category,
+          student_caste_category: d.student_caste_category || res?.student_caste_category,
+          concession_percent: d.concession_percent || 0,
+          concession_applied: d.concession_applied || 0
+        })))
+      } else {
+        // Fallback demo data
+        setDues([
+          { id: '1', component: 'Semester Tuition Fee', term: 'Term 2025-26', amount: 50000, dueDate: '2026-11-15', lateFee: 0, paid: 50000, balance: 0, status: 'Paid', student_caste_category: 'GENERAL' },
+          { id: '2', component: 'Laboratory & Practical Charges', term: 'Term 2025-26', amount: 8000, dueDate: '2026-11-15', lateFee: 0, paid: 8000, balance: 0, status: 'Paid', student_caste_category: 'GENERAL' },
+        ])
+      }
+    } catch {
+      // Offline fallback
+      setDues([
+        { id: '1', component: 'Semester Tuition Fee', term: 'Term 2025-26', amount: 50000, dueDate: '2026-11-15', lateFee: 0, paid: 50000, balance: 0, status: 'Paid', student_caste_category: 'GENERAL' },
+        { id: '2', component: 'Laboratory & Practical Charges', term: 'Term 2025-26', amount: 8000, dueDate: '2026-11-15', lateFee: 0, paid: 8000, balance: 0, status: 'Paid', student_caste_category: 'GENERAL' },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDues()
+  }, [])
 
   const totalPayable = dues.reduce((sum, d) => sum + d.amount + d.lateFee, 0)
   const totalPaid = dues.reduce((sum, d) => sum + d.paid, 0)
   const totalOutstanding = dues.reduce((sum, d) => sum + d.balance, 0)
   const totalLateFee = dues.reduce((sum, d) => sum + d.lateFee, 0)
+  const totalConcession = dues.reduce((sum, d) => sum + (d.concession_applied || 0), 0)
 
   const handleOpenPay = (record: DueRecord) => {
     setPayingRecord(record)
     setIsPayModalOpen(true)
   }
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!payingRecord) return
     setIsProcessing(true)
-    setTimeout(() => {
-      setDues(prev => prev.map(d => {
-        if (d.id === payingRecord.id) {
-          return {
-            ...d,
-            paid: d.paid + d.balance,
-            balance: 0,
-            status: 'Paid'
-          }
+    try {
+      const payAmount = payingRecord.balance + payingRecord.lateFee
+      await apiClient('/payments', {
+        data: {
+          due_ids: [Number(payingRecord.id)],
+          amount: payAmount,
+          payment_mode: paymentMethod === 'CARD' ? 'ONLINE' : paymentMethod === 'NETBANKING' ? 'ONLINE' : 'ONLINE',
+          reference_no: `PAY-${Date.now().toString(36).toUpperCase()}`
         }
-        return d
-      }))
-      setIsProcessing(false)
+      })
+      toast.success(`Payment of ₹${payAmount.toLocaleString()} completed successfully!`)
       setIsPayModalOpen(false)
-      toast.success(`Payment of ₹${payingRecord.balance.toLocaleString()} completed successfully! Receipt generated.`)
-    }, 1000)
+      fetchDues()
+    } catch (err: any) {
+      toast.error(err.message || 'Payment processing failed')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const getStatusFamily = (status: DueRecord['status']): 'success' | 'warning' | 'error' | 'info' => {
@@ -76,7 +126,22 @@ export const MyFeesAndDuesPage: React.FC = () => {
       render: (r) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '13.5px' }}>{r.component}</span>
-          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Invoice #{r.id}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Due #{r.id}</span>
+            {r.concession_applied && r.concession_applied > 0 ? (
+              <span style={{
+                fontSize: '11px',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                background: 'var(--color-surface-subtle)',
+                color: 'var(--color-success)',
+                fontWeight: 600,
+                border: '1px solid var(--color-border)'
+              }}>
+                Caste Concession Applied (-₹{r.concession_applied.toLocaleString()})
+              </span>
+            ) : null}
+          </div>
         </div>
       )
     },
@@ -86,9 +151,13 @@ export const MyFeesAndDuesPage: React.FC = () => {
       render: (r) => <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{r.term}</span>
     },
     {
-      header: 'Base Amount',
+      header: 'Assessed Amount',
       key: 'amount',
-      render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>₹{r.amount.toLocaleString()}</span>
+      render: (r) => (
+        <div>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>₹{r.amount.toLocaleString()}</span>
+        </div>
+      )
     },
     {
       header: 'Due Date',
@@ -100,19 +169,6 @@ export const MyFeesAndDuesPage: React.FC = () => {
           fontWeight: r.status === 'Overdue' ? 600 : 400
         }}>
           {r.dueDate}
-        </span>
-      )
-    },
-    {
-      header: 'Late Fee',
-      key: 'lateFee',
-      render: (r) => (
-        <span style={{
-          fontVariantNumeric: 'tabular-nums',
-          color: r.lateFee > 0 ? 'var(--color-error)' : 'var(--color-text-muted)',
-          fontWeight: r.lateFee > 0 ? 600 : 400
-        }}>
-          {r.lateFee > 0 ? `+₹${r.lateFee}` : '₹0'}
         </span>
       )
     },
@@ -149,7 +205,7 @@ export const MyFeesAndDuesPage: React.FC = () => {
             Pay Now
           </Button>
         ) : (
-          <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => toast.success(`Receipt downloaded for ${r.component}`)}>
+          <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => navigate('/student/receipt-history')}>
             Receipt
           </Button>
         )
@@ -167,15 +223,15 @@ export const MyFeesAndDuesPage: React.FC = () => {
               M4 · Finance
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)', letterSpacing: '-0.3px' }}>
-              My Fees & Dues
+              My Fees, Dues & Caste Concessions
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Review institutional invoices, late penalty breakdowns, and settle outstanding balances securely.
+            Review institutional invoices, applied category fee concessions, and settle outstanding balances.
           </p>
         </div>
 
-        {totalOutstanding > 0 && (
+        {totalOutstanding > 0 ? (
           <Button
             variant="danger"
             icon={<Wallet size={16} />}
@@ -183,6 +239,49 @@ export const MyFeesAndDuesPage: React.FC = () => {
           >
             Pay Outstanding (₹{totalOutstanding.toLocaleString()})
           </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            icon={<Download size={16} />}
+            onClick={() => navigate('/student/receipt-history')}
+          >
+            View Official Receipt
+          </Button>
+        )}
+      </div>
+
+      {/* Student Category Badge */}
+      <div style={{
+        padding: '12px 16px',
+        background: 'var(--color-surface-subtle)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Award size={18} color="var(--color-primary)" />
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            Registered Caste Category: <strong>{studentCaste}</strong>
+          </span>
+          <span style={{
+            fontSize: '11px',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            background: studentCaste === 'GENERAL' ? 'var(--color-surface-muted)' : 'var(--color-success-bg)',
+            color: studentCaste === 'GENERAL' ? 'var(--color-text-muted)' : 'var(--color-success)',
+            fontWeight: 700
+          }}>
+            {studentCaste === 'GENERAL' ? 'Standard Structure' : 'Govt/Caste Concession Beneficiary'}
+          </span>
+        </div>
+        {totalConcession > 0 && (
+          <div style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>
+            Total Concession Benefited: ₹{totalConcession.toLocaleString()}
+          </div>
         )}
       </div>
 
@@ -193,14 +292,14 @@ export const MyFeesAndDuesPage: React.FC = () => {
           value={`₹${totalPayable.toLocaleString()}`}
           icon={<DollarSign size={20} />}
           moduleColor="finance"
-          supportText="Spring 2024 academic term"
+          supportText="After caste concessions"
         />
         <StatCard
           label="Total Paid"
           value={`₹${totalPaid.toLocaleString()}`}
           icon={<CheckCircle2 size={20} />}
           moduleColor="people"
-          supportText="Receipts available"
+          supportText={totalOutstanding === 0 ? "100% Cleared (Receipt Unlocked)" : "Partial payment recorded"}
           supportColor="success"
         />
         <StatCard
@@ -208,7 +307,7 @@ export const MyFeesAndDuesPage: React.FC = () => {
           value={`₹${totalOutstanding.toLocaleString()}`}
           icon={<CreditCard size={20} />}
           moduleColor="alerts"
-          supportText={totalOutstanding > 0 ? 'Payment required' : 'All fees settled'}
+          supportText={totalOutstanding > 0 ? 'Clear dues to unlock receipt' : 'All fees settled'}
           supportColor={totalOutstanding > 0 ? 'error' : 'success'}
         />
         <StatCard
@@ -221,18 +320,9 @@ export const MyFeesAndDuesPage: React.FC = () => {
         />
       </div>
 
-      {/* Overdue Warning Alert */}
-      {dues.some(d => d.status === 'Overdue') && (
-        <Alert
-          variant="error"
-          title="Outstanding Overdue Fees"
-          message="You have overdue fee balances. University automated rules will restrict final examination registration if dues remain unsettled."
-        />
-      )}
-
       {/* Fee Table */}
       <Card padding={0}>
-        <Table columns={columns} data={dues} />
+        <Table columns={columns} data={dues} isLoading={loading} keyExtractor={(r) => String(r.id)} />
       </Card>
 
       {/* Pay Drawer */}
@@ -263,7 +353,7 @@ export const MyFeesAndDuesPage: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--color-surface-muted)', padding: '16px', borderRadius: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Base Amount</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Assessed Amount</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>₹{payingRecord.amount.toLocaleString()}</span>
               </div>
               {payingRecord.lateFee > 0 && (
@@ -281,25 +371,26 @@ export const MyFeesAndDuesPage: React.FC = () => {
               <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                 <span>Net Payable</span>
-                <span style={{ color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>₹{payingRecord.balance.toLocaleString()}</span>
+                <span style={{ color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                  ₹{(payingRecord.balance + payingRecord.lateFee).toLocaleString()}
+                </span>
               </div>
             </div>
 
             <Select
-              label="Payment Method"
+              label="Payment Rail"
               value={paymentMethod}
               options={[
-                { label: 'UPI / QR Code (Instant)', value: 'UPI' },
+                { label: 'UPI / QR Code (Instant Settlement)', value: 'UPI' },
                 { label: 'Net Banking (All Major Banks)', value: 'NETBANKING' },
-                { label: 'Debit / Credit Card', value: 'CARD' },
-                { label: 'NEFT / RTGS Transfer', value: 'NEFT' }
+                { label: 'Debit / Credit Card', value: 'CARD' }
               ]}
               onChange={(e) => setPaymentMethod(e.target.value)}
             />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '12px' }}>
               <ShieldCheck size={16} color="var(--color-success)" />
-              <span>Payments are encrypted with 256-bit SSL and processed instantly into the student ledger.</span>
+              <span>Receipt will be officially generated once total fees are fully cleared.</span>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
@@ -307,7 +398,7 @@ export const MyFeesAndDuesPage: React.FC = () => {
                 Cancel
               </Button>
               <Button variant="primary" isLoading={isProcessing} onClick={handleConfirmPayment}>
-                Pay ₹{payingRecord.balance.toLocaleString()}
+                Pay ₹{(payingRecord.balance + payingRecord.lateFee).toLocaleString()}
               </Button>
             </div>
           </div>

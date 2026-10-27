@@ -354,6 +354,9 @@ class M4Service:
             student_id = self._get_student_id_for_user(current_user_id)
             if receipt["student_id"] != student_id:
                 raise APIError("FORBIDDEN", "You do not have permission to view another student's receipt", 403)
+            dues = self.repo.get_student_dues(student_id)
+            if any(d["status"] != "PAID" or d["balance"] > 0.01 for d in dues):
+                raise APIError("BAD_REQUEST", "Official receipt is only generated when the whole fee has been paid.", 400)
 
         return receipt
 

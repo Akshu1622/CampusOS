@@ -40,7 +40,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise APIError(code="FORBIDDEN", message="User account is deactivated or revoked", status_code=status.HTTP_403_FORBIDDEN)
 
     # Set session variable for audit triggers
-    db.execute(text("SET @app_user_id = :uid"), {"uid": user_id})
+    db.execute(text("SET @app_user_id = :uid, @acting_user_id = :uid"), {"uid": user_id})
 
     return CurrentUser(user_id=user_id, roles=roles, permission_sets=permission_sets)
 

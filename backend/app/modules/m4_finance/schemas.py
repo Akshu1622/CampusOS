@@ -50,6 +50,7 @@ class FeeComponentBase(BaseModel):
     amount: float = Field(..., ge=0)
     due_date: date
     caste_category: Optional[str] = Field("ALL", pattern="^(ALL|GENERAL|OBC|SC|ST|EWS)$")
+    concession_percent: Optional[float] = Field(0.0, ge=0, le=100)
 
 
 class FeeComponentCreate(FeeComponentBase):
@@ -61,6 +62,7 @@ class FeeComponentUpdate(BaseModel):
     amount: Optional[float] = Field(None, ge=0)
     due_date: Optional[date] = None
     caste_category: Optional[str] = Field(None, pattern="^(ALL|GENERAL|OBC|SC|ST|EWS)$")
+    concession_percent: Optional[float] = Field(None, ge=0, le=100)
 
 
 class FeeComponentResponse(FeeComponentBase):
@@ -221,6 +223,9 @@ class StudentFeeResponse(BaseModel):
     status: FeeStatus
     computed_late_fee: float = 0.0
     total_payable: float = 0.0
+    concession_percent: Optional[float] = 0.0
+    concession_applied: Optional[float] = 0.0
+    student_caste_category: Optional[str] = None
 
     class Config:
         from_attributes = True
