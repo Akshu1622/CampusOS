@@ -18,6 +18,7 @@ from app.modules.m4_finance.schemas import (
     PaymentCreate, PaymentResponse, ReceiptResponse, ReceiptDetailResponse,
     PaymentLedgerItemResponse, PaymentLedgerSummaryResponse,
     DefaulterItemResponse, DefaulterSummaryResponse,
+    CastewiseSummaryResponse,
     FeeAuditLogResponse, PaginatedResponse,
     FeeCollectionSummaryItem, HighDuesStudentItem
 )
@@ -190,7 +191,7 @@ def calculate_late_fee_simulation(
     )
 
 
-# ─── Fee Assignments & Invoicing (F-02) ───────────────────────────────────────
+# ─── Fee Assignments & Invoicing Castewise (F-02) ─────────────────────────────
 
 @m4_router.post("/fee-assignments/preview", response_model=FeeAssignmentPreviewResponse)
 def preview_fee_assignment(
@@ -202,7 +203,8 @@ def preview_fee_assignment(
         fee_structure_id=data.fee_structure_id,
         student_ids=data.student_ids,
         program_id=data.program_id,
-        term_id=data.term_id
+        term_id=data.term_id,
+        caste_category=data.caste_category
     )
 
 
@@ -217,12 +219,13 @@ def assign_fees(
         student_ids=data.student_ids,
         program_id=data.program_id,
         term_id=data.term_id,
+        caste_category=data.caste_category,
         skip_existing=data.skip_existing,
         acting_user=user.user_id
     )
 
 
-# ─── Student Dues (F-04) ──────────────────────────────────────────────────────
+# ─── Student Dues (F-04 Castewise) ────────────────────────────────────────────
 
 @m4_router.get("/me/dues", response_model=StudentDuesSummaryResponse)
 def get_my_dues(
@@ -305,7 +308,7 @@ def get_all_receipts(
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
-# ─── Payment Ledger (F-08) ────────────────────────────────────────────────────
+# ─── Payment Ledger (F-08 Castewise) ──────────────────────────────────────────
 
 @m4_router.get("/payments", response_model=PaginatedResponse)
 def get_payment_ledger(
@@ -314,6 +317,7 @@ def get_payment_ledger(
     search: Optional[str] = None,
     program_id: Optional[int] = None,
     term_id: Optional[int] = None,
+    caste_category: Optional[str] = Query(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$"),
     payment_mode: Optional[str] = None,
     status: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -323,7 +327,7 @@ def get_payment_ledger(
 ):
     skip = (page - 1) * page_size
     items, total = svc.get_payment_ledger(
-        skip, page_size, search, program_id, term_id, payment_mode, status, start_date, end_date
+        skip, page_size, search, program_id, term_id, caste_category, payment_mode, status, start_date, end_date
     )
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
@@ -339,17 +343,18 @@ def get_payment_ledger_summary(
 @m4_router.get("/payments/export", response_class=PlainTextResponse)
 def export_payment_ledger(
     program_id: Optional[int] = None,
+    caste_category: Optional[str] = Query(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     svc: M4Service = Depends(get_m4_service),
     _=Depends(require_permission(["Finance_Admin"]))
 ):
     items, _ = svc.get_payment_ledger(
-        skip=0, limit=10000, program_id=program_id, start_date=start_date, end_date=end_date
+        skip=0, limit=10000, program_id=program_id, caste_category=caste_category, start_date=start_date, end_date=end_date
     )
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Receipt No", "Student ID", "Student Name", "Program", "Amount", "Mode", "Reference", "Date", "Status"])
+    writer.writerow(["Receipt No", "Student ID", "Student Name", "Category", "Program", "Amount", "Mode", "Reference", "Date", "Status"])
 
     total_amount = 0.0
     for row in items:
@@ -359,6 +364,7 @@ def export_payment_ledger(
             row.get("receipt_number") or "",
             row.get("global_student_id") or "",
             row.get("student_name") or "",
+            row.get("caste_category") or "GENERAL",
             row.get("program_name") or "",
             f"{amt:.2f}",
             row.get("payment_mode") or "",
@@ -368,7 +374,7 @@ def export_payment_ledger(
         ])
 
     writer.writerow([])
-    writer.writerow(["TOTAL", "", "", "", f"{total_amount:.2f}", "", "", "", ""])
+    writer.writerow(["TOTAL", "", "", "", "", f"{total_amount:.2f}", "", "", "", ""])
 
     return PlainTextResponse(
         content=output.getvalue(),
@@ -377,7 +383,7 @@ def export_payment_ledger(
     )
 
 
-# ─── Defaulters (F-09) ────────────────────────────────────────────────────────
+# ─── Defaulters (F-09 Castewise) ──────────────────────────────────────────────
 
 @m4_router.get("/fees/defaulters", response_model=PaginatedResponse)
 def get_fee_defaulters(
@@ -386,36 +392,39 @@ def get_fee_defaulters(
     search: Optional[str] = None,
     program_id: Optional[int] = None,
     term_id: Optional[int] = None,
+    caste_category: Optional[str] = Query(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$"),
     min_amount: Optional[float] = None,
     svc: M4Service = Depends(get_m4_service),
     _=Depends(require_permission(["Finance_Admin"]))
 ):
     skip = (page - 1) * page_size
-    items, total = svc.get_fee_defaulters(skip, page_size, search, program_id, term_id, min_amount)
+    items, total = svc.get_fee_defaulters(skip, page_size, search, program_id, term_id, caste_category, min_amount)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @m4_router.get("/fees/defaulters/summary", response_model=DefaulterSummaryResponse)
 def get_defaulter_summary(
     program_id: Optional[int] = None,
+    caste_category: Optional[str] = Query(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$"),
     min_amount: Optional[float] = None,
     svc: M4Service = Depends(get_m4_service),
     _=Depends(require_permission(["Finance_Admin"]))
 ):
-    return svc.get_defaulter_summary(program_id, min_amount)
+    return svc.get_defaulter_summary(program_id, caste_category, min_amount)
 
 
 @m4_router.get("/fees/defaulters/export", response_class=PlainTextResponse)
 def export_fee_defaulters(
     program_id: Optional[int] = None,
+    caste_category: Optional[str] = Query(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$"),
     min_amount: Optional[float] = None,
     svc: M4Service = Depends(get_m4_service),
     _=Depends(require_permission(["Finance_Admin"]))
 ):
-    items, _ = svc.get_fee_defaulters(skip=0, limit=10000, program_id=program_id, min_amount=min_amount)
+    items, _ = svc.get_fee_defaulters(skip=0, limit=10000, program_id=program_id, caste_category=caste_category, min_amount=min_amount)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Student ID", "Student Name", "Program", "Component", "Term", "Due Date", "Overdue Days", "Amount Due", "Amount Paid", "Late Fee", "Total Balance"])
+    writer.writerow(["Student ID", "Student Name", "Category", "Program", "Component", "Term", "Due Date", "Overdue Days", "Amount Due", "Amount Paid", "Late Fee", "Total Balance"])
 
     total_balance = 0.0
     for row in items:
@@ -424,6 +433,7 @@ def export_fee_defaulters(
         writer.writerow([
             row.get("global_student_id") or "",
             row.get("student_name") or "",
+            row.get("caste_category") or "GENERAL",
             row.get("program_name") or "",
             row.get("component_name") or "",
             row.get("term_label") or "",
@@ -436,13 +446,29 @@ def export_fee_defaulters(
         ])
 
     writer.writerow([])
-    writer.writerow(["TOTAL OUTSTANDING", "", "", "", "", "", "", "", "", "", f"{total_balance:.2f}"])
+    writer.writerow(["TOTAL OUTSTANDING", "", "", "", "", "", "", "", "", "", "", f"{total_balance:.2f}"])
 
     return PlainTextResponse(
         content=output.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="fee_defaulters.csv"'}
     )
+
+
+# ─── Castewise Summary Report (New Feature) ───────────────────────────────────
+
+@m4_router.get("/fees/castewise-summary", response_model=CastewiseSummaryResponse)
+def get_castewise_summary(
+    program_id: Optional[int] = None,
+    term_id: Optional[int] = None,
+    svc: M4Service = Depends(get_m4_service),
+    _=Depends(require_permission(["Finance_Admin"]))
+):
+    """
+    Returns high-level castewise summary across all admission categories
+    (GENERAL, OBC, SC, ST, EWS), showing dues, collections, balance, and defaulters.
+    """
+    return svc.get_castewise_summary(program_id, term_id)
 
 
 # ─── Fee Change Audit Log (F-10) ──────────────────────────────────────────────

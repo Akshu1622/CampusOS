@@ -86,7 +86,8 @@ class M4Repository:
 
     def get_fee_components_for_structure(self, structure_id: int) -> List[Dict[str, Any]]:
         query = text("""
-            SELECT id, structure_id, component_name, amount, due_date
+            SELECT id, structure_id, component_name, amount, due_date,
+                   COALESCE(caste_category, 'ALL') AS caste_category
             FROM fee_component
             WHERE structure_id = :sid
             ORDER BY due_date ASC, id ASC
@@ -103,10 +104,17 @@ class M4Repository:
         structure_id = res.lastrowid
 
         for c in components:
+            caste = c.get("caste_category") or "ALL"
             self.db.execute(text("""
-                INSERT INTO fee_component (structure_id, component_name, amount, due_date)
-                VALUES (:sid, :name, :amt, :dd)
-            """), {"sid": structure_id, "name": c["component_name"], "amt": c["amount"], "dd": c["due_date"]})
+                INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+                VALUES (:sid, :name, :amt, :dd, :caste)
+            """), {
+                "sid": structure_id,
+                "name": c["component_name"],
+                "amt": c["amount"],
+                "dd": c["due_date"],
+                "caste": caste
+            })
 
         self.db.commit()
         return structure_id
@@ -125,13 +133,19 @@ class M4Repository:
             self.db.execute(text(f"UPDATE fee_structure SET {', '.join(set_clauses)} WHERE id = :id"), params)
 
         if components is not None:
-            # Overwrite components
             self.db.execute(text("DELETE FROM fee_component WHERE structure_id = :sid"), {"sid": structure_id})
             for c in components:
+                caste = c.get("caste_category") or "ALL"
                 self.db.execute(text("""
-                    INSERT INTO fee_component (structure_id, component_name, amount, due_date)
-                    VALUES (:sid, :name, :amt, :dd)
-                """), {"sid": structure_id, "name": c["component_name"], "amt": c["amount"], "dd": c["due_date"]})
+                    INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+                    VALUES (:sid, :name, :amt, :dd, :caste)
+                """), {
+                    "sid": structure_id,
+                    "name": c["component_name"],
+                    "amt": c["amount"],
+                    "dd": c["due_date"],
+                    "caste": caste
+                })
 
         self.db.commit()
 
@@ -144,14 +158,16 @@ class M4Repository:
 
     def add_fee_component(self, structure_id: int, comp_data: dict, acting_user: Optional[int] = None) -> int:
         self._set_acting_user(acting_user)
+        caste = comp_data.get("caste_category") or "ALL"
         res = self.db.execute(text("""
-            INSERT INTO fee_component (structure_id, component_name, amount, due_date)
-            VALUES (:sid, :name, :amt, :dd)
+            INSERT INTO fee_component (structure_id, component_name, amount, due_date, caste_category)
+            VALUES (:sid, :name, :amt, :dd, :caste)
         """), {
             "sid": structure_id,
             "name": comp_data["component_name"],
             "amt": comp_data["amount"],
-            "dd": comp_data["due_date"]
+            "dd": comp_data["due_date"],
+            "caste": caste
         })
         self.db.commit()
         return res.lastrowid
@@ -220,14 +236,15 @@ class M4Repository:
         """), {"rid": rule_id, "due_date": due_date, "as_of_date": as_of_date}).scalar()
         return float(res or 0.0)
 
-    # ─── Fee Assignment & Invoicing (F-02) ─────────────────────────────────────
+    # ─── Fee Assignment & Invoicing Castewise (F-02) ───────────────────────────
 
     def preview_fee_assignment(
         self,
         fee_structure_id: int,
         student_ids: Optional[List[int]] = None,
         program_id: Optional[int] = None,
-        term_id: Optional[int] = None
+        term_id: Optional[int] = None,
+        caste_category: Optional[str] = None
     ) -> Dict[str, Any]:
         structure = self.get_fee_structure_by_id(fee_structure_id)
         if not structure:
@@ -237,22 +254,27 @@ class M4Repository:
         per_student_amt = sum(c["amount"] for c in components)
         comp_ids = [c["id"] for c in components]
 
-        # Determine target students
+        # Determine target students, with optional caste_category filter
+        caste_filter = "AND caste_category = :caste" if caste_category else ""
+        caste_params = {"caste": caste_category} if caste_category else {}
+
         if student_ids and len(student_ids) > 0:
-            students_query = text("""
-                SELECT id, global_student_id, CONCAT(first_name, ' ', last_name) AS student_name, program_id
+            students_query = text(f"""
+                SELECT id, global_student_id, CONCAT(first_name, ' ', last_name) AS student_name,
+                       program_id, COALESCE(caste_category, 'GENERAL') AS caste_category
                 FROM student
-                WHERE id IN :sids AND status = 'ENROLLED'
+                WHERE id IN :sids AND status = 'ENROLLED' {caste_filter}
             """)
-            target_students = [dict(r._mapping) for r in self.db.execute(students_query, {"sids": tuple(student_ids)}).fetchall()]
+            target_students = [dict(r._mapping) for r in self.db.execute(students_query, {"sids": tuple(student_ids), **caste_params}).fetchall()]
         else:
             prog = program_id or structure["program_id"]
-            students_query = text("""
-                SELECT id, global_student_id, CONCAT(first_name, ' ', last_name) AS student_name, program_id
+            students_query = text(f"""
+                SELECT id, global_student_id, CONCAT(first_name, ' ', last_name) AS student_name,
+                       program_id, COALESCE(caste_category, 'GENERAL') AS caste_category
                 FROM student
-                WHERE program_id = :pid AND status = 'ENROLLED'
+                WHERE program_id = :pid AND status = 'ENROLLED' {caste_filter}
             """)
-            target_students = [dict(r._mapping) for r in self.db.execute(students_query, {"pid": prog}).fetchall()]
+            target_students = [dict(r._mapping) for r in self.db.execute(students_query, {"pid": prog, **caste_params}).fetchall()]
 
         total_students = len(target_students)
         if total_students == 0 or len(comp_ids) == 0:
@@ -265,6 +287,7 @@ class M4Repository:
                 "already_assigned_count": 0,
                 "to_assign_count": 0,
                 "total_projected_amount": 0.0,
+                "caste_breakdown": {},
                 "sample_students": []
             }
 
@@ -282,7 +305,21 @@ class M4Repository:
 
         already_count = len(assigned_sids)
         to_assign_count = total_students - already_count
-        total_projected = to_assign_count * per_student_amt
+
+        # Compute castewise breakdown and projected amount according to applicable components
+        caste_breakdown: Dict[str, int] = {}
+        total_projected = 0.0
+
+        for s in target_students:
+            caste = s["caste_category"]
+            caste_breakdown[caste] = caste_breakdown.get(caste, 0) + 1
+            if s["id"] not in assigned_sids:
+                # Add sum of components applicable to this student's caste
+                applicable_sum = sum(
+                    c["amount"] for c in components 
+                    if c.get("caste_category") in ("ALL", caste) or not c.get("caste_category")
+                )
+                total_projected += applicable_sum
 
         sample = []
         for s in target_students[:10]:
@@ -290,6 +327,7 @@ class M4Repository:
                 "student_id": s["id"],
                 "global_student_id": s["global_student_id"],
                 "student_name": s["student_name"],
+                "caste_category": s["caste_category"],
                 "is_already_assigned": s["id"] in assigned_sids
             })
 
@@ -302,6 +340,7 @@ class M4Repository:
             "already_assigned_count": already_count,
             "to_assign_count": to_assign_count,
             "total_projected_amount": total_projected,
+            "caste_breakdown": caste_breakdown,
             "sample_students": sample
         }
 
@@ -311,6 +350,7 @@ class M4Repository:
         student_ids: Optional[List[int]] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         skip_existing: bool = True,
         acting_user: Optional[int] = None
     ) -> Tuple[int, int, float]:
@@ -323,23 +363,35 @@ class M4Repository:
         if not components:
             return 0, 0, 0.0
 
-        per_student_amt = sum(c["amount"] for c in components)
         comp_ids = [c["id"] for c in components]
 
         # Determine target students
+        caste_filter = "AND caste_category = :caste" if caste_category else ""
+        caste_params = {"caste": caste_category} if caste_category else {}
+
         if student_ids and len(student_ids) > 0:
-            target_students_query = text("SELECT id FROM student WHERE id IN :sids AND status = 'ENROLLED'")
-            target_sids = [r.id for r in self.db.execute(target_students_query, {"sids": tuple(student_ids)}).fetchall()]
+            target_students_query = text(f"""
+                SELECT id, COALESCE(caste_category, 'GENERAL') AS caste_category 
+                FROM student 
+                WHERE id IN :sids AND status = 'ENROLLED' {caste_filter}
+            """)
+            target_students = self.db.execute(target_students_query, {"sids": tuple(student_ids), **caste_params}).fetchall()
         else:
             prog = program_id or structure["program_id"]
-            target_students_query = text("SELECT id FROM student WHERE program_id = :pid AND status = 'ENROLLED'")
-            target_sids = [r.id for r in self.db.execute(target_students_query, {"pid": prog}).fetchall()]
+            target_students_query = text(f"""
+                SELECT id, COALESCE(caste_category, 'GENERAL') AS caste_category 
+                FROM student 
+                WHERE program_id = :pid AND status = 'ENROLLED' {caste_filter}
+            """)
+            target_students = self.db.execute(target_students_query, {"pid": prog, **caste_params}).fetchall()
 
-        if not target_sids:
+        if not target_students:
             return 0, 0, 0.0
 
+        target_sids = [r.id for r in target_students]
         assigned_count = 0
         skipped_count = 0
+        total_assigned_amount = 0.0
 
         # Query existing assignments for deduplication
         existing_check = text("""
@@ -352,26 +404,31 @@ class M4Repository:
             "cids": tuple(comp_ids)
         }).fetchall())
 
-        for sid in target_sids:
+        for st in target_students:
+            sid = st.id
+            caste = st.caste_category
+
             if sid in already_assigned_sids:
                 if skip_existing:
                     skipped_count += 1
                     continue
-                else:
-                    # Let it insert and fail if duplicate or skip
-                    pass
 
-            for comp in components:
-                # Insert if not exists
+            # Assign components matching ALL or student's caste
+            applicable_comps = [
+                c for c in components 
+                if c.get("caste_category") in ("ALL", caste) or not c.get("caste_category")
+            ]
+
+            for comp in applicable_comps:
                 self.db.execute(text("""
                     INSERT IGNORE INTO student_fee (student_id, component_id, amount_due, amount_paid, status)
                     VALUES (:sid, :cid, :amt, 0.00, 'PENDING')
                 """), {"sid": sid, "cid": comp["id"], "amt": comp["amount"]})
+                total_assigned_amount += float(comp["amount"])
 
             assigned_count += 1
 
         self.db.commit()
-        total_assigned_amount = assigned_count * per_student_amt
         return assigned_count, skipped_count, total_assigned_amount
 
     # ─── Student Dues (F-04) ──────────────────────────────────────────────────
@@ -379,6 +436,7 @@ class M4Repository:
     def get_student_dues(self, student_id: int) -> List[Dict[str, Any]]:
         query = text("""
             SELECT sf.id, sf.student_id, sf.component_id, fc.component_name,
+                   fc.caste_category, s.caste_category AS student_caste_category,
                    fs.structure_name, at.term_label, fc.due_date,
                    sf.amount_due, sf.amount_paid,
                    (sf.amount_due - sf.amount_paid) AS balance,
@@ -389,6 +447,7 @@ class M4Repository:
                        CURDATE()
                    ) - IFNULL((SELECT SUM(allocated_late_fee) FROM payment_allocation WHERE student_fee_id = sf.id), 0)) AS computed_late_fee
             FROM student_fee sf
+            JOIN student s ON sf.student_id = s.id
             JOIN fee_component fc ON sf.component_id = fc.id
             JOIN fee_structure fs ON fc.structure_id = fs.id
             JOIN academic_term at ON fs.term_id = at.id
@@ -417,12 +476,10 @@ class M4Repository:
     ) -> Dict[str, Any]:
         self._set_acting_user(acting_user)
 
-        # Generate a unique reference number if not provided
         ref = reference_no
         if not ref or not ref.strip():
             ref = f"PAY-{datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:6].upper()}"
 
-        # Call the ACID stored procedure sp_fee_payment
         proc_query = text("""
             CALL sp_fee_payment(:sid, :due_ids, :amt, :mode, :ref, :uid)
         """)
@@ -440,7 +497,6 @@ class M4Repository:
         if res:
             return dict(res._mapping)
 
-        # Fallback to fetching latest receipt for this student
         fallback_query = text("""
             SELECT r.id AS receipt_id, r.receipt_number, r.generated_at, p.amount, p.payment_mode, p.reference_no
             FROM receipt r
@@ -459,6 +515,7 @@ class M4Repository:
             SELECT r.id, r.receipt_number, r.payment_id, r.generated_at,
                    p.student_id, CONCAT(s.first_name, ' ', s.last_name) AS student_name,
                    s.global_student_id, s.email AS student_email,
+                   COALESCE(s.caste_category, 'GENERAL') AS caste_category,
                    pr.name AS program_name,
                    p.amount, p.payment_mode, p.reference_no, p.payment_date, p.status
             FROM receipt r
@@ -473,7 +530,6 @@ class M4Repository:
 
         result = dict(row._mapping)
 
-        # Fetch allocated line items
         alloc_query = text("""
             SELECT fc.component_name, fc.due_date,
                    pa.allocated_principal, pa.allocated_late_fee,
@@ -542,7 +598,8 @@ class M4Repository:
         query = text(f"""
             SELECT r.id, r.receipt_number, r.payment_id, r.generated_at,
                    p.student_id, CONCAT(s.first_name, ' ', s.last_name) AS student_name,
-                   s.global_student_id, p.amount, p.payment_mode, p.reference_no, p.payment_date, p.status
+                   s.global_student_id, COALESCE(s.caste_category, 'GENERAL') AS caste_category,
+                   p.amount, p.payment_mode, p.reference_no, p.payment_date, p.status
             FROM receipt r
             JOIN payment p ON r.payment_id = p.id
             JOIN student s ON p.student_id = s.id
@@ -553,7 +610,7 @@ class M4Repository:
         rows = self.db.execute(query, params).fetchall()
         return [dict(r._mapping) for r in rows], total
 
-    # ─── Payment Ledger (F-08) ────────────────────────────────────────────────
+    # ─── Payment Ledger (F-08 Castewise) ──────────────────────────────────────
 
     def get_payment_ledger(
         self,
@@ -562,6 +619,7 @@ class M4Repository:
         search: Optional[str] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         payment_mode: Optional[str] = None,
         status: Optional[str] = None,
         start_date: Optional[date] = None,
@@ -576,6 +634,9 @@ class M4Repository:
         if program_id:
             filters.append("s.program_id = :program_id")
             params["program_id"] = program_id
+        if caste_category:
+            filters.append("s.caste_category = :caste_category")
+            params["caste_category"] = caste_category
         if payment_mode:
             filters.append("p.payment_mode = :payment_mode")
             params["payment_mode"] = payment_mode
@@ -603,7 +664,8 @@ class M4Repository:
         query = text(f"""
             SELECT p.id, r.id AS receipt_id, r.receipt_number,
                    p.student_id, CONCAT(s.first_name, ' ', s.last_name) AS student_name,
-                   s.global_student_id, pr.name AS program_name,
+                   s.global_student_id, COALESCE(s.caste_category, 'GENERAL') AS caste_category,
+                   pr.name AS program_name,
                    p.amount, p.payment_mode, p.reference_no, p.payment_date, p.status
             FROM payment p
             JOIN student s ON p.student_id = s.id
@@ -633,7 +695,7 @@ class M4Repository:
             "total_transactions": 0
         }
 
-    # ─── Fee Defaulters (F-09) ────────────────────────────────────────────────
+    # ─── Fee Defaulters (F-09 Castewise) ──────────────────────────────────────
 
     def get_fee_defaulters(
         self,
@@ -642,6 +704,7 @@ class M4Repository:
         search: Optional[str] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         min_amount: Optional[float] = None
     ) -> Tuple[List[Dict[str, Any]], int]:
         filters = []
@@ -653,13 +716,15 @@ class M4Repository:
         if program_id:
             filters.append("s.program_id = :program_id")
             params["program_id"] = program_id
+        if caste_category:
+            filters.append("s.caste_category = :caste_category")
+            params["caste_category"] = caste_category
         if min_amount is not None:
             filters.append("v.total_balance >= :min_amount")
             params["min_amount"] = min_amount
 
         where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
 
-        # Use vw_fee_defaulters view
         count_query = text(f"""
             SELECT COUNT(*)
             FROM vw_fee_defaulters v
@@ -672,8 +737,9 @@ class M4Repository:
             total = 0
 
         query = text(f"""
-            SELECT v.student_id, v.global_student_id, v.student_name, v.program_name,
-                   v.component_name, v.term_label, v.due_date,
+            SELECT v.student_id, v.global_student_id, v.student_name,
+                   COALESCE(s.caste_category, 'GENERAL') AS caste_category,
+                   v.program_name, v.component_name, v.term_label, v.due_date,
                    DATEDIFF(CURDATE(), v.due_date) AS overdue_days,
                    v.amount_due, v.amount_paid, v.late_fee, v.total_balance
             FROM vw_fee_defaulters v
@@ -691,6 +757,7 @@ class M4Repository:
     def get_defaulter_summary(
         self,
         program_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         min_amount: Optional[float] = None
     ) -> Dict[str, Any]:
         filters = []
@@ -699,6 +766,9 @@ class M4Repository:
         if program_id:
             filters.append("s.program_id = :program_id")
             params["program_id"] = program_id
+        if caste_category:
+            filters.append("s.caste_category = :caste_category")
+            params["caste_category"] = caste_category
         if min_amount is not None:
             filters.append("v.total_balance >= :min_amount")
             params["min_amount"] = min_amount
@@ -730,6 +800,93 @@ class M4Repository:
                 "oldest_overdue_days": 0,
                 "average_overdue_amount": 0.0
             }
+
+    # ─── Castewise Summary Report (New Feature) ───────────────────────────────
+
+    def get_castewise_summary(
+        self,
+        program_id: Optional[int] = None,
+        term_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        filters = []
+        params: Dict[str, Any] = {}
+
+        if program_id:
+            filters.append("s.program_id = :program_id")
+            params["program_id"] = program_id
+        if term_id:
+            filters.append("fs.term_id = :term_id")
+            params["term_id"] = term_id
+
+        where_clause = f"AND {' AND '.join(filters)}" if filters else ""
+
+        query = text(f"""
+            SELECT 
+                COALESCE(s.caste_category, 'GENERAL') AS caste_category,
+                COUNT(DISTINCT s.id) AS total_students,
+                COALESCE(SUM(sf.amount_due), 0.0) AS total_due,
+                COALESCE(SUM(sf.amount_paid), 0.0) AS total_paid,
+                COALESCE(SUM(sf.amount_due - sf.amount_paid), 0.0) AS total_balance,
+                COUNT(DISTINCT CASE WHEN (sf.amount_due - sf.amount_paid) > 0 AND fc.due_date < CURDATE() THEN s.id END) AS defaulters_count
+            FROM student s
+            LEFT JOIN student_fee sf ON s.id = sf.student_id
+            LEFT JOIN fee_component fc ON sf.component_id = fc.id
+            LEFT JOIN fee_structure fs ON fc.structure_id = fs.id
+            WHERE s.status IN ('ACTIVE', 'ENROLLED') {where_clause}
+            GROUP BY COALESCE(s.caste_category, 'GENERAL')
+            ORDER BY FIELD(COALESCE(s.caste_category, 'GENERAL'), 'GENERAL', 'OBC', 'SC', 'ST', 'EWS')
+        """)
+        rows = self.db.execute(query, params).fetchall()
+
+        all_categories = ["GENERAL", "OBC", "SC", "ST", "EWS"]
+        cat_map = {r.caste_category: dict(r._mapping) for r in rows}
+
+        items = []
+        tot_students = 0
+        tot_due = 0.0
+        tot_paid = 0.0
+        tot_balance = 0.0
+
+        for cat in all_categories:
+            data = cat_map.get(cat, {
+                "caste_category": cat,
+                "total_students": 0,
+                "total_due": 0.0,
+                "total_paid": 0.0,
+                "total_balance": 0.0,
+                "defaulters_count": 0
+            })
+            td = float(data["total_due"] or 0.0)
+            tp = float(data["total_paid"] or 0.0)
+            tb = float(data["total_balance"] or 0.0)
+            ts = int(data["total_students"] or 0)
+            pct = round((tp / td * 100), 2) if td > 0 else 0.0
+
+            items.append({
+                "caste_category": cat,
+                "total_students": ts,
+                "total_due": td,
+                "total_paid": tp,
+                "total_balance": tb,
+                "defaulters_count": int(data["defaulters_count"] or 0),
+                "collection_percentage": pct
+            })
+
+            tot_students += ts
+            tot_due += td
+            tot_paid += tp
+            tot_balance += tb
+
+        overall_pct = round((tot_paid / tot_due * 100), 2) if tot_due > 0 else 0.0
+
+        return {
+            "categories": items,
+            "total_students": tot_students,
+            "total_due": tot_due,
+            "total_paid": tot_paid,
+            "total_balance": tot_balance,
+            "overall_collection_percentage": overall_pct
+        }
 
     # ─── Fee Audit Log (F-10) ─────────────────────────────────────────────────
 
@@ -774,7 +931,6 @@ class M4Repository:
         results = []
         for r in rows:
             d = dict(r._mapping)
-            # Ensure JSON strings parse to dict/list if they were stored as text
             if isinstance(d["old_value"], str):
                 try: d["old_value"] = json.loads(d["old_value"])
                 except Exception: pass

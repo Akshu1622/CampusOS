@@ -27,14 +27,9 @@ class M4Service:
         requested_student_id: Optional[int],
         has_admin: bool
     ) -> int:
-        """
-        If requested_student_id is provided and user has admin privileges, use it.
-        Otherwise, resolve the student linked to current_user_id.
-        """
         if requested_student_id is not None:
             if not has_admin:
                 raise APIError("FORBIDDEN", "Only finance administrators can record payments for other students", 403)
-            # Verify student exists
             exists = self.repo.db.execute(
                 text("SELECT id FROM student WHERE id = :sid"),
                 {"sid": requested_student_id}
@@ -71,7 +66,6 @@ class M4Service:
         components: list,
         acting_user: Optional[int] = None
     ) -> Dict[str, Any]:
-        # Validate program and term exist
         prog = self.repo.db.execute(text("SELECT id FROM program WHERE id = :pid"), {"pid": data["program_id"]}).fetchone()
         if not prog:
             raise APIError("NOT_FOUND", f"Program {data['program_id']} not found", 404)
@@ -101,7 +95,6 @@ class M4Service:
 
     def delete_fee_structure(self, structure_id: int, acting_user: Optional[int] = None):
         self.get_fee_structure(structure_id)
-        # Check if student fees are attached
         has_dues = self.repo.db.execute(text("""
             SELECT 1 FROM student_fee sf
             JOIN fee_component fc ON sf.component_id = fc.id
@@ -121,18 +114,26 @@ class M4Service:
         self.get_fee_structure(structure_id)
         try:
             cid = self.repo.add_fee_component(structure_id, comp_data, acting_user)
-            comp = self.repo.db.execute(text("SELECT id, structure_id, component_name, amount, due_date FROM fee_component WHERE id = :id"), {"id": cid}).fetchone()
+            comp = self.repo.db.execute(text("""
+                SELECT id, structure_id, component_name, amount, due_date,
+                       COALESCE(caste_category, 'ALL') AS caste_category
+                FROM fee_component WHERE id = :id
+            """), {"id": cid}).fetchone()
             return dict(comp._mapping)
         except DBAPIError as e:
             handle_db_error(e)
 
     def update_fee_component(self, component_id: int, comp_data: dict, acting_user: Optional[int] = None) -> Dict[str, Any]:
-        comp = self.repo.db.execute(text("SELECT id, structure_id, component_name, amount, due_date FROM fee_component WHERE id = :id"), {"id": component_id}).fetchone()
+        comp = self.repo.db.execute(text("SELECT id FROM fee_component WHERE id = :id"), {"id": component_id}).fetchone()
         if not comp:
             raise APIError("NOT_FOUND", "Fee component not found", 404)
         try:
             self.repo.update_fee_component(component_id, comp_data, acting_user)
-            updated = self.repo.db.execute(text("SELECT id, structure_id, component_name, amount, due_date FROM fee_component WHERE id = :id"), {"id": component_id}).fetchone()
+            updated = self.repo.db.execute(text("""
+                SELECT id, structure_id, component_name, amount, due_date,
+                       COALESCE(caste_category, 'ALL') AS caste_category
+                FROM fee_component WHERE id = :id
+            """), {"id": component_id}).fetchone()
             return dict(updated._mapping)
         except DBAPIError as e:
             handle_db_error(e)
@@ -141,7 +142,6 @@ class M4Service:
         comp = self.repo.db.execute(text("SELECT id FROM fee_component WHERE id = :id"), {"id": component_id}).fetchone()
         if not comp:
             raise APIError("NOT_FOUND", "Fee component not found", 404)
-        # Check if student dues exist
         has_dues = self.repo.db.execute(text("SELECT 1 FROM student_fee WHERE component_id = :cid LIMIT 1"), {"cid": component_id}).fetchone()
         if has_dues:
             raise APIError("CONFLICT", "Cannot delete fee component with active student dues", 409)
@@ -191,7 +191,6 @@ class M4Service:
         principal_amount: Optional[float] = None
     ) -> Dict[str, Any]:
         as_of = as_of_date or date.today()
-        # Find default rule if not specified
         if not rule_id:
             rule_row = self.repo.db.execute(text("SELECT id FROM late_fee_rule ORDER BY id ASC LIMIT 1")).fetchone()
             if not rule_row:
@@ -217,17 +216,20 @@ class M4Service:
             "projected_total": projected
         }
 
-    # ─── Fee Assignment & Invoicing (F-02) ─────────────────────────────────────
+    # ─── Fee Assignment & Invoicing Castewise (F-02) ───────────────────────────
 
     def preview_fee_assignment(
         self,
         fee_structure_id: int,
         student_ids: Optional[List[int]] = None,
         program_id: Optional[int] = None,
-        term_id: Optional[int] = None
+        term_id: Optional[int] = None,
+        caste_category: Optional[str] = None
     ) -> Dict[str, Any]:
         self.get_fee_structure(fee_structure_id)
-        return self.repo.preview_fee_assignment(fee_structure_id, student_ids, program_id, term_id)
+        return self.repo.preview_fee_assignment(
+            fee_structure_id, student_ids, program_id, term_id, caste_category
+        )
 
     def assign_fees(
         self,
@@ -235,26 +237,29 @@ class M4Service:
         student_ids: Optional[List[int]] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         skip_existing: bool = True,
         acting_user: Optional[int] = None
     ) -> Dict[str, Any]:
         structure = self.get_fee_structure(fee_structure_id)
         try:
             assigned, skipped, total_amt = self.repo.assign_fees(
-                fee_structure_id,
-                student_ids,
-                program_id,
-                term_id,
-                skip_existing,
-                acting_user
+                fee_structure_id=fee_structure_id,
+                student_ids=student_ids,
+                program_id=program_id,
+                term_id=term_id,
+                caste_category=caste_category,
+                skip_existing=skip_existing,
+                acting_user=acting_user
             )
+            caste_desc = f" [{caste_category}]" if caste_category else ""
             return {
                 "fee_structure_id": fee_structure_id,
                 "structure_name": structure["structure_name"],
                 "assigned_count": assigned,
                 "skipped_count": skipped,
                 "total_assigned_amount": total_amt,
-                "message": f"Successfully generated fee dues for {assigned} student(s). {skipped} student(s) already assigned and skipped."
+                "message": f"Successfully generated fee dues for {assigned} student(s){caste_desc}. {skipped} student(s) already assigned and skipped."
             }
         except DBAPIError as e:
             handle_db_error(e)
@@ -270,7 +275,10 @@ class M4Service:
         tot_balance = sum(d["balance"] for d in dues)
         tot_late = sum(d["computed_late_fee"] for d in dues)
 
+        caste = dues[0]["student_caste_category"] if dues and "student_caste_category" in dues[0] else "GENERAL"
+
         return {
+            "student_caste_category": caste,
             "total_payable": tot_balance + tot_late,
             "total_paid": tot_paid,
             "total_outstanding": tot_balance,
@@ -279,8 +287,7 @@ class M4Service:
         }
 
     def get_student_dues_admin(self, student_id: int) -> Dict[str, Any]:
-        # Verify student exists
-        s = self.repo.db.execute(text("SELECT id FROM student WHERE id = :sid"), {"sid": student_id}).fetchone()
+        s = self.repo.db.execute(text("SELECT id, caste_category FROM student WHERE id = :sid"), {"sid": student_id}).fetchone()
         if not s:
             raise APIError("NOT_FOUND", f"Student with ID {student_id} not found", 404)
 
@@ -290,7 +297,10 @@ class M4Service:
         tot_balance = sum(d["balance"] for d in dues)
         tot_late = sum(d["computed_late_fee"] for d in dues)
 
+        caste = s.caste_category if hasattr(s, "caste_category") and s.caste_category else "GENERAL"
+
         return {
+            "student_caste_category": caste,
             "total_payable": tot_balance + tot_late,
             "total_paid": tot_paid,
             "total_outstanding": tot_balance,
@@ -326,7 +336,6 @@ class M4Service:
                 reference_no=reference_no,
                 acting_user=current_user_id
             )
-            # Fetch complete receipt detail
             if receipt and "receipt_id" in receipt:
                 detail = self.repo.get_receipt_detail(receipt["receipt_id"])
                 return detail or receipt
@@ -334,7 +343,7 @@ class M4Service:
         except DBAPIError as e:
             handle_db_error(e)
 
-    # ─── Receipts & Ledger (F-06, F-07, F-08) ─────────────────────────────────
+    # ─── Receipts & Ledger (F-06, F-07, F-08 Castewise) ───────────────────────
 
     def get_receipt(self, receipt_id: int, current_user_id: int, has_admin: bool) -> Dict[str, Any]:
         receipt = self.repo.get_receipt_detail(receipt_id)
@@ -370,19 +379,20 @@ class M4Service:
         search: Optional[str] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         payment_mode: Optional[str] = None,
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None
     ) -> Tuple[List[Dict[str, Any]], int]:
         return self.repo.get_payment_ledger(
-            skip, limit, search, program_id, term_id, payment_mode, status, start_date, end_date
+            skip, limit, search, program_id, term_id, caste_category, payment_mode, status, start_date, end_date
         )
 
     def get_payment_ledger_summary(self) -> Dict[str, Any]:
         return self.repo.get_payment_ledger_summary()
 
-    # ─── Defaulters (F-09) ────────────────────────────────────────────────────
+    # ─── Defaulters (F-09 Castewise) ──────────────────────────────────────────
 
     def get_fee_defaulters(
         self,
@@ -391,16 +401,27 @@ class M4Service:
         search: Optional[str] = None,
         program_id: Optional[int] = None,
         term_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         min_amount: Optional[float] = None
     ) -> Tuple[List[Dict[str, Any]], int]:
-        return self.repo.get_fee_defaulters(skip, limit, search, program_id, term_id, min_amount)
+        return self.repo.get_fee_defaulters(skip, limit, search, program_id, term_id, caste_category, min_amount)
 
     def get_defaulter_summary(
         self,
         program_id: Optional[int] = None,
+        caste_category: Optional[str] = None,
         min_amount: Optional[float] = None
     ) -> Dict[str, Any]:
-        return self.repo.get_defaulter_summary(program_id, min_amount)
+        return self.repo.get_defaulter_summary(program_id, caste_category, min_amount)
+
+    # ─── Castewise Summary Report ─────────────────────────────────────────────
+
+    def get_castewise_summary(
+        self,
+        program_id: Optional[int] = None,
+        term_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        return self.repo.get_castewise_summary(program_id, term_id)
 
     # ─── Fee Change Audit Log (F-10) ──────────────────────────────────────────
 

@@ -181,6 +181,7 @@ class StudentCreateRequest(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     batch_year: int = Field(..., ge=2000, le=2100)
     program_id: int
+    caste_category: Optional[str] = Field("GENERAL", pattern="^(GENERAL|OBC|SC|ST|EWS)$")
 
 class StudentUpdateRequest(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
@@ -189,6 +190,7 @@ class StudentUpdateRequest(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     batch_year: Optional[int] = Field(None, ge=2000, le=2100)
     program_id: Optional[int] = None
+    caste_category: Optional[str] = Field(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$")
     status: Optional[str] = Field(None, pattern="^(ACTIVE|ALUMNI|DROPPED)$")
 
 class StudentResponse(BaseModel):
@@ -202,6 +204,7 @@ class StudentResponse(BaseModel):
     program_id: int
     program_name: Optional[str] = None
     department_name: Optional[str] = None
+    caste_category: Optional[str] = "GENERAL"
     status: str
 
 class StudentDetailResponse(StudentResponse):

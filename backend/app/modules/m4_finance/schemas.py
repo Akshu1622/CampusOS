@@ -26,12 +26,30 @@ class PaymentStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class CasteCategory(str, Enum):
+    GENERAL = "GENERAL"
+    OBC = "OBC"
+    SC = "SC"
+    ST = "ST"
+    EWS = "EWS"
+
+
+class ApplicableCaste(str, Enum):
+    ALL = "ALL"
+    GENERAL = "GENERAL"
+    OBC = "OBC"
+    SC = "SC"
+    ST = "ST"
+    EWS = "EWS"
+
+
 # ─── Fee Component Schemas ────────────────────────────────────────────────────
 
 class FeeComponentBase(BaseModel):
     component_name: constr(max_length=50)
     amount: float = Field(..., ge=0)
     due_date: date
+    caste_category: Optional[str] = Field("ALL", pattern="^(ALL|GENERAL|OBC|SC|ST|EWS)$")
 
 
 class FeeComponentCreate(FeeComponentBase):
@@ -42,6 +60,7 @@ class FeeComponentUpdate(BaseModel):
     component_name: Optional[constr(max_length=50)] = None
     amount: Optional[float] = Field(None, ge=0)
     due_date: Optional[date] = None
+    caste_category: Optional[str] = Field(None, pattern="^(ALL|GENERAL|OBC|SC|ST|EWS)$")
 
 
 class FeeComponentResponse(FeeComponentBase):
@@ -151,6 +170,7 @@ class FeeAssignmentCreate(BaseModel):
     student_ids: Optional[List[int]] = None
     program_id: Optional[int] = None
     term_id: Optional[int] = None
+    caste_category: Optional[str] = Field(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$")
     skip_existing: bool = True
 
 
@@ -159,6 +179,7 @@ class FeeAssignmentPreviewRequest(BaseModel):
     student_ids: Optional[List[int]] = None
     program_id: Optional[int] = None
     term_id: Optional[int] = None
+    caste_category: Optional[str] = Field(None, pattern="^(GENERAL|OBC|SC|ST|EWS)$")
 
 
 class FeeAssignmentPreviewResponse(BaseModel):
@@ -170,6 +191,7 @@ class FeeAssignmentPreviewResponse(BaseModel):
     already_assigned_count: int
     to_assign_count: int
     total_projected_amount: float
+    caste_breakdown: Optional[Dict[str, int]] = None
     sample_students: List[Dict[str, Any]] = []
 
 
@@ -189,6 +211,7 @@ class StudentFeeResponse(BaseModel):
     student_id: int
     component_id: int
     component_name: str
+    caste_category: Optional[str] = None
     structure_name: Optional[str] = None
     term_label: Optional[str] = None
     due_date: date
@@ -204,6 +227,7 @@ class StudentFeeResponse(BaseModel):
 
 
 class StudentDuesSummaryResponse(BaseModel):
+    student_caste_category: Optional[str] = "GENERAL"
     total_payable: float = 0.0
     total_paid: float = 0.0
     total_outstanding: float = 0.0
@@ -218,7 +242,7 @@ class PaymentCreate(BaseModel):
     amount: float = Field(..., gt=0)
     payment_mode: PaymentMode
     reference_no: Optional[constr(max_length=50)] = None
-    student_id: Optional[int] = None  # Populated for Admin recording on behalf of student
+    student_id: Optional[int] = None
 
 
 class PaymentResponse(BaseModel):
@@ -262,6 +286,7 @@ class ReceiptDetailResponse(BaseModel):
     student_name: str
     global_student_id: str
     student_email: Optional[str] = None
+    caste_category: Optional[str] = "GENERAL"
     program_name: Optional[str] = None
     amount: float
     payment_mode: str
@@ -279,6 +304,7 @@ class PaymentLedgerItemResponse(BaseModel):
     student_id: int
     student_name: str
     global_student_id: str
+    caste_category: Optional[str] = "GENERAL"
     program_name: Optional[str] = None
     amount: float
     payment_mode: str
@@ -303,6 +329,7 @@ class DefaulterItemResponse(BaseModel):
     student_id: int
     global_student_id: str
     student_name: str
+    caste_category: Optional[str] = "GENERAL"
     program_name: str
     component_name: str
     term_label: str
@@ -322,6 +349,27 @@ class DefaulterSummaryResponse(BaseModel):
     total_outstanding: float = 0.0
     oldest_overdue_days: int = 0
     average_overdue_amount: float = 0.0
+
+
+# ─── Castewise Summary Report (New Feature) ───────────────────────────────────
+
+class CastewiseSummaryItem(BaseModel):
+    caste_category: str
+    total_students: int = 0
+    total_due: float = 0.0
+    total_paid: float = 0.0
+    total_balance: float = 0.0
+    defaulters_count: int = 0
+    collection_percentage: float = 0.0
+
+
+class CastewiseSummaryResponse(BaseModel):
+    categories: List[CastewiseSummaryItem]
+    total_students: int = 0
+    total_due: float = 0.0
+    total_paid: float = 0.0
+    total_balance: float = 0.0
+    overall_collection_percentage: float = 0.0
 
 
 # ─── Fee Change Audit Log (F-10) ──────────────────────────────────────────────

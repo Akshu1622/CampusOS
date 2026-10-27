@@ -459,6 +459,7 @@ class M1Repository:
         q = text(f"""
             SELECT s.id, s.global_student_id, s.first_name, s.last_name,
                    s.email, s.phone, s.batch_year, s.program_id, s.status,
+                   s.caste_category,
                    p.name AS program_name,
                    d.name AS department_name
             FROM student s
@@ -476,6 +477,7 @@ class M1Repository:
         q = text("""
             SELECT s.id, s.global_student_id, s.first_name, s.last_name,
                    s.email, s.phone, s.batch_year, s.program_id, s.status,
+                   s.caste_category,
                    p.name AS program_name,
                    d.name AS department_name,
                    ua.id AS user_id,
@@ -493,13 +495,13 @@ class M1Repository:
 
     def create_student(self, global_id: str, data: dict) -> int:
         q = text("""
-            INSERT INTO student (global_student_id, first_name, last_name, email, phone, batch_year, program_id, status)
-            VALUES (:gid, :fn, :ln, :em, :ph, :ay, :pid, 'ACTIVE')
+            INSERT INTO student (global_student_id, first_name, last_name, email, phone, batch_year, program_id, caste_category, status)
+            VALUES (:gid, :fn, :ln, :em, :ph, :ay, :pid, :caste, 'ACTIVE')
         """)
         res = self.db.execute(q, {
             "gid": global_id, "fn": data['first_name'], "ln": data['last_name'],
             "em": data['email'], "ph": data.get('phone'), "ay": data['batch_year'],
-            "pid": data['program_id']
+            "pid": data['program_id'], "caste": data.get('caste_category', 'GENERAL')
         })
         self.db.commit()
         return res.lastrowid
@@ -510,7 +512,8 @@ class M1Repository:
         field_map = {
             "first_name": "first_name", "last_name": "last_name",
             "email": "email", "phone": "phone",
-            "batch_year": "batch_year", "program_id": "program_id", "status": "status"
+            "batch_year": "batch_year", "program_id": "program_id",
+            "caste_category": "caste_category", "status": "status"
         }
         for key, col in field_map.items():
             if key in data and data[key] is not None:
