@@ -41,6 +41,10 @@ def handle_db_error(e: Exception):
                     raise APIError(code="EXAM_STUDENT_NOT_ENROLLED", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
                 if "already published" in msg_str:
                     raise APIError(code="RESULT_ALREADY_PUBLISHED", message=str(msg), status_code=status.HTTP_409_CONFLICT)
+                if "exceeds the outstanding balance" in msg_str or "exceeds balance" in msg_str:
+                    raise APIError(code="PAYMENT_EXCEEDS_BALANCE", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+                if "already fully settled" in msg_str or "already settled" in msg_str:
+                    raise APIError(code="DUE_ALREADY_SETTLED", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
                 if "capacity" in msg_str and "full" in msg_str:
                     raise APIError(code="ENROLLMENT_CAPACITY_FULL", message=str(msg), status_code=status.HTTP_409_CONFLICT)
                 if "term is not open" in msg_str:
