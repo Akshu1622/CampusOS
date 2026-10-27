@@ -336,3 +336,44 @@ def get_payslips_for_employee(db: Session, emp_id: int) -> List[dict]:
         return payslips
     except Exception as e:
         handle_db_error(e)
+
+def check_leave_overlap(db: Session, employee_id: int, start_date: date, end_date: date) -> bool:
+    """
+    Returns True if employee has an active (PENDING or APPROVED) leave
+    overlapping [start_date, end_date].
+    Overlap formula: start_date <= existing.end_date AND end_date >= existing.start_date
+    """
+    try:
+        query = text("""
+            SELECT id FROM leave_application
+            WHERE employee_id = :e
+              AND status IN ('PENDING', 'APPROVED')
+              AND start_date <= :end_d
+              AND end_date >= :start_d
+            LIMIT 1
+        """)
+        res = db.execute(query, {
+            "e": employee_id,
+            "start_d": start_date,
+            "end_d": end_date
+        }).fetchone()
+        return res is not None
+    except Exception as e:
+        handle_db_error(e)
+
+def get_payroll_register(db: Session, month: Optional[str] = None, dept_id: Optional[int] = None) -> List[dict]:
+    try:
+        q = "SELECT * FROM vw_payroll_register WHERE 1=1"
+        params = {}
+        if month:
+            q += " AND payroll_month = :m"
+            params["m"] = month
+        if dept_id:
+            q += " AND employee_id IN (SELECT id FROM employee WHERE department_id = :d)"
+            params["d"] = dept_id
+        q += " ORDER BY department_name ASC, employee_name ASC"
+        res = db.execute(text(q), params).mappings().all()
+        return [dict(r) for r in res]
+    except Exception as e:
+        handle_db_error(e)
+

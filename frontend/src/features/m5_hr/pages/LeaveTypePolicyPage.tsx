@@ -1,131 +1,167 @@
-import React, { useState } from 'react'
-import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer, Input, Select, Alert } from '@/components/ui'
-import { Plus, ShieldCheck, HeartPulse, Clock, Sparkles, Edit2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer, Input, Select } from '@/components/ui'
+import { Plus, HeartPulse, Clock, Sparkles } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
 
-interface LeaveType {
-  id: string
+interface CombinedPolicyRow {
+  id: number
   name: string
-  code: string
-  entitlement: number
-  carryForward: string
-  applicability: string
-  encashable: boolean
-  status: 'Active' | 'Inactive'
+  is_paid: boolean
+  faculty_quota: number
+  staff_quota: number
+  carry_forward: boolean
 }
 
-const initialLeaveTypes: LeaveType[] = [
-  { id: '1', name: 'Casual Leave (CL)', code: 'CL', entitlement: 12, carryForward: 'No (Lapses on 31 Dec)', applicability: 'All Full-Time Employees', encashable: false, status: 'Active' },
-  { id: '2', name: 'Sick Leave (SL)', code: 'SL', entitlement: 10, carryForward: 'Up to 5 Days', applicability: 'All Full-Time Employees', encashable: false, status: 'Active' },
-  { id: '3', name: 'Earned / Privilege Leave (EL)', code: 'EL', entitlement: 15, carryForward: 'Up to 60 Days', applicability: 'Confirmed Faculty & Staff', encashable: true, status: 'Active' },
-  { id: '4', name: 'Maternity Leave', code: 'ML', entitlement: 180, carryForward: 'Statutory Allowance', applicability: 'Female Staff (Per Rules)', encashable: false, status: 'Active' },
-  { id: '5', name: 'Academic Duty Leave', code: 'DL', entitlement: 14, carryForward: 'No (Per Academic Year)', applicability: 'Teaching Faculty', encashable: false, status: 'Active' },
-]
-
 export const LeaveTypePolicyPage: React.FC = () => {
-  const [types, setTypes] = useState<LeaveType[]>(initialLeaveTypes)
+  const [policies, setPolicies] = useState<CombinedPolicyRow[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<LeaveType | null>(null)
+  const [loading, setLoading] = useState(false)
+
   const [formData, setFormData] = useState({
     name: '',
-    code: '',
-    entitlement: 12,
-    carryForward: 'No',
-    applicability: 'All Full-Time Employees',
-    encashable: false
+    isPaid: true,
+    facultyQuota: 12,
+    staffQuota: 15,
+    carryForward: false
   })
 
-  const handleOpenAdd = () => {
-    setEditingItem(null)
-    setFormData({ name: '', code: '', entitlement: 12, carryForward: 'No', applicability: 'All Full-Time Employees', encashable: false })
-    setIsDrawerOpen(true)
-  }
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [typesRes, entRes] = await Promise.all([
+        apiClient<any[]>('/leave-types'),
+        apiClient<any[]>('/leave-entitlements')
+      ])
 
-  const handleOpenEdit = (item: LeaveType) => {
-    setEditingItem(item)
-    setFormData({
-      name: item.name,
-      code: item.code,
-      entitlement: item.entitlement,
-      carryForward: item.carryForward,
-      applicability: item.applicability,
-      encashable: item.encashable
-    })
-    setIsDrawerOpen(true)
-  }
+      const types = Array.isArray(typesRes) ? typesRes : []
+      const entitlements = Array.isArray(entRes) ? entRes : []
 
-  const handleSave = () => {
-    if (!formData.name || !formData.code) return
-    if (editingItem) {
-      setTypes(prev => prev.map(t => t.id === editingItem.id ? { ...t, ...formData } : t))
-    } else {
-      const newItem: LeaveType = {
-        id: String(types.length + 1),
-        ...formData,
-        status: 'Active'
-      }
-      setTypes(prev => [...prev, newItem])
+      const combined: CombinedPolicyRow[] = types.map(t => {
+        const facEnt = entitlements.find(e => e.leave_type_id === t.id && e.emp_type === 'FACULTY')
+        const staffEnt = entitlements.find(e => e.leave_type_id === t.id && e.emp_type === 'STAFF')
+        return {
+          id: t.id,
+          name: t.name,
+          is_paid: t.is_paid,
+          faculty_quota: facEnt ? facEnt.annual_quota : 0,
+          staff_quota: staffEnt ? staffEnt.annual_quota : 0,
+          carry_forward: (facEnt && facEnt.carry_forward) || (staffEnt && staffEnt.carry_forward) || false
+        }
+      })
+      setPolicies(combined)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load leave types & policies')
+    } finally {
+      setLoading(false)
     }
-    setIsDrawerOpen(false)
   }
 
-  const columns: Column<LeaveType>[] = [
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      toast.error('Leave type name is required')
+      return
+    }
+
+    try {
+      // 1. Create leave type
+      const lt = await apiClient<any>('/leave-types', {
+        method: 'POST',
+        data: {
+          name: formData.name.trim(),
+          is_paid: formData.isPaid
+        }
+      })
+
+      const ltId = lt?.id
+      if (ltId) {
+        // 2. Set Faculty quota
+        await apiClient('/leave-entitlements', {
+          method: 'POST',
+          data: {
+            leave_type_id: ltId,
+            emp_type: 'FACULTY',
+            annual_quota: Number(formData.facultyQuota),
+            carry_forward: formData.carryForward
+          }
+        })
+        // 3. Set Staff quota
+        await apiClient('/leave-entitlements', {
+          method: 'POST',
+          data: {
+            leave_type_id: ltId,
+            emp_type: 'STAFF',
+            annual_quota: Number(formData.staffQuota),
+            carry_forward: formData.carryForward
+          }
+        })
+      }
+
+      toast.success('Leave policy configured successfully!')
+      setIsDrawerOpen(false)
+      setFormData({
+        name: '',
+        isPaid: true,
+        facultyQuota: 12,
+        staffQuota: 15,
+        carryForward: false
+      })
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save leave policy')
+    }
+  }
+
+  const columns: Column<CombinedPolicyRow>[] = [
     {
-      header: 'Leave Policy Name',
+      header: 'Leave Type Name',
       key: 'name',
       render: (r) => (
         <div>
           <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.name}</div>
-          <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>Code: {r.code}</div>
+          <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>ID: #{r.id}</div>
         </div>
       )
     },
     {
-      header: 'Annual Entitlement',
-      key: 'entitlement',
-      render: (r) => (
-        <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-          {r.entitlement} Days / Yr
-        </span>
-      )
-    },
-    {
-      header: 'Carry Forward Rules',
-      key: 'carryForward',
-      render: (r) => <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{r.carryForward}</span>
-    },
-    {
-      header: 'Applicable Cohort',
-      key: 'applicability',
-      render: (r) => (
-        <span style={{
-          fontSize: '12px',
-          padding: '2px 8px',
-          borderRadius: '4px',
-          background: 'var(--color-surface-subtle)',
-          color: 'var(--color-text-secondary)',
-          border: '1px solid var(--color-border)'
-        }}>
-          {r.applicability}
-        </span>
-      )
-    },
-    {
-      header: 'Encashment',
-      key: 'encashable',
+      header: 'Compensation',
+      key: 'is_paid',
       render: (r) => (
         <StatusPill
-          label={r.encashable ? 'Encashable' : 'Non-Encashable'}
-          status={r.encashable ? 'success' : 'neutral'}
+          label={r.is_paid ? 'Paid Leave' : 'Unpaid (LOP)'}
+          status={r.is_paid ? 'success' : 'warning'}
         />
       )
     },
     {
-      header: 'Action',
-      key: 'id',
+      header: 'Faculty Annual Quota',
+      key: 'faculty_quota',
       render: (r) => (
-        <Button variant="subtle" size="sm" onClick={() => handleOpenEdit(r)}>
-          <Edit2 size={13} />
-        </Button>
+        <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+          {r.faculty_quota} Days / Yr
+        </span>
+      )
+    },
+    {
+      header: 'Staff Annual Quota',
+      key: 'staff_quota',
+      render: (r) => (
+        <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
+          {r.staff_quota} Days / Yr
+        </span>
+      )
+    },
+    {
+      header: 'Carry Forward',
+      key: 'carry_forward',
+      render: (r) => (
+        <span style={{ fontSize: '13px', color: r.carry_forward ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+          {r.carry_forward ? 'Allowed' : 'Lapses at Year-End'}
+        </span>
       )
     }
   ]
@@ -140,64 +176,53 @@ export const LeaveTypePolicyPage: React.FC = () => {
               HR-03
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Leave Types & Statutory Policy Master
+              Leave Types & Annual Policy Rules
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Configure annual faculty quotas, maternity rights, encashment parameters, and carry-forward rules.
+            Configure institutional leave categories, annual day allowances, carry-forward policies, and encashment terms.
           </p>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenAdd}>
-          Configure New Leave Type
+        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>
+          New Leave Policy
         </Button>
       </div>
-
-      <Alert variant="info" title="Automatic Annual Credit">
-        Statutory leave quotas are automatically credited on 1st January of each calendar year. Balances are derived dynamically in real-time as applications are sanctioned.
-      </Alert>
 
       {/* StatCards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
-          label="Active Policies"
-          value={types.length}
-          tone="positive"
-          icon={<ShieldCheck size={18} />}
-          description="Institutional categories"
-        />
-        <StatCard
-          label="Casual Quota (CL)"
-          value="12 Days"
-          tone="accent"
-          icon={<Clock size={18} />}
-          description="Lapses every 12 months"
-        />
-        <StatCard
-          label="Sick Quota (SL)"
-          value="10 Days"
+          label="Defined Leave Types"
+          value={policies.length}
           tone="neutral"
           icon={<HeartPulse size={18} />}
-          description="Requires medical slip >2d"
+          description="Active institutional policies"
         />
         <StatCard
-          label="Earned Quota (EL)"
-          value="15 Days"
+          label="Paid Policies"
+          value={policies.filter(p => p.is_paid).length}
           tone="positive"
+          icon={<Clock size={18} />}
+          description="Standard paid leaves"
+        />
+        <StatCard
+          label="Carry-Forward Enabled"
+          value={policies.filter(p => p.carry_forward).length}
+          tone="accent"
           icon={<Sparkles size={18} />}
-          description="Cumulative & encashable"
+          description="Accumulation allowed"
         />
       </div>
 
       {/* Table */}
       <Card padding={0}>
-        <Table data={types} columns={columns} keyExtractor={(r) => r.id} />
+        <Table data={policies} columns={columns} keyExtractor={(r) => String(r.id)} />
       </Card>
 
       {/* Drawer */}
       <Drawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        title={editingItem ? 'Edit Leave Policy' : 'Create Leave Policy'}
+        title="Define Leave Type & Quota Policy"
         size="md"
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
@@ -208,35 +233,54 @@ export const LeaveTypePolicyPage: React.FC = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Policy Name</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Leave Policy Name</label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. Sabbatical Research Leave"
+              placeholder="e.g. Casual Leave (CL), Sabbatical Leave"
             />
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Short Code</label>
-            <Input
-              value={formData.code}
-              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-              placeholder="e.g. SRL"
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Leave Nature</label>
+            <Select
+              value={formData.isPaid ? 'PAID' : 'UNPAID'}
+              onChange={(e) => setFormData(prev => ({ ...prev, isPaid: e.target.value === 'PAID' }))}
+              options={[
+                { value: 'PAID', label: 'Paid Leave (Regular compensation)' },
+                { value: 'UNPAID', label: 'Unpaid Leave (Loss of Pay / LOP deduction)' }
+              ]}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Annual Days Allowance</label>
-            <Input
-              type="number"
-              value={formData.entitlement}
-              onChange={(e) => setFormData(prev => ({ ...prev, entitlement: Number(e.target.value) }))}
-            />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Faculty Annual Quota</label>
+              <Input
+                type="number"
+                value={String(formData.facultyQuota)}
+                onChange={(e) => setFormData(prev => ({ ...prev, facultyQuota: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Staff Annual Quota</label>
+              <Input
+                type="number"
+                value={String(formData.staffQuota)}
+                onChange={(e) => setFormData(prev => ({ ...prev, staffQuota: Number(e.target.value) }))}
+              />
+            </div>
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Carry-Forward Clause</label>
-            <Input
-              value={formData.carryForward}
-              onChange={(e) => setFormData(prev => ({ ...prev, carryForward: e.target.value }))}
-              placeholder="e.g. Up to 10 days"
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Carry Forward Rule</label>
+            <Select
+              value={formData.carryForward ? 'YES' : 'NO'}
+              onChange={(e) => setFormData(prev => ({ ...prev, carryForward: e.target.value === 'YES' }))}
+              options={[
+                { value: 'NO', label: 'No Carry Forward (Lapses at Year-End)' },
+                { value: 'YES', label: 'Carry Forward Allowed into Next Year' }
+              ]}
             />
           </div>
         </div>

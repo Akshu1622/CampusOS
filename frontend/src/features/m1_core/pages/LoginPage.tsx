@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
+import { env } from '@/lib/env'
 import { GraduationCap, BookOpen, Users, BarChart3, Shield, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 const loginSchema = z.object({
@@ -96,7 +97,7 @@ export function LoginPage() {
       formData.append('username', data.username)
       formData.append('password', data.password)
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/auth/login`, {
+      const response = await fetch(`${env.API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
@@ -112,7 +113,7 @@ export function LoginPage() {
 
       // Fetch user profile to route to role-appropriate portal
       try {
-        const meRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/me`, {
+        const meRes = await fetch(`${env.API_BASE_URL}/api/v1/me`, {
           headers: { Authorization: `Bearer ${authData.access_token}` }
         })
         if (meRes.ok) {

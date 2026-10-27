@@ -226,7 +226,7 @@ export const MyPayslipsPage: React.FC = () => {
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', fontSize: '13px', fontWeight: 700 }}>
-                  <span>Total Deductions</span>
+                  <span>Total Deductions</span>{selectedSlip.leave_days_deducted > 0 && <span style={{ fontSize: '11px', color: 'var(--color-warning)', marginLeft: '6px' }}>(incl. {selectedSlip.leave_days_deducted}d LOP)</span>}
                   <span style={{ color: 'var(--color-error)' }}>-₹{selectedSlip.total_deductions.toLocaleString()}</span>
                 </div>
               </div>

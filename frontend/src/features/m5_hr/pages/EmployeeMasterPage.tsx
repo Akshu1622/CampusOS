@@ -1,106 +1,170 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Card, Table, type Column, Button, Input, StatCard, StatusPill, Drawer, Select, Avatar, EmptyState } from '@/components/ui'
-import { Briefcase, Plus, Search, FileDown, Users, Award, CheckCircle2, MoreHorizontal, X } from 'lucide-react'
+import { Briefcase, Plus, Search, FileDown, Users, Award, X } from 'lucide-react'
+import { apiClient } from '@/api/client'
 import { toast } from 'react-hot-toast'
 
-interface Employee {
-  id: string
-  name: string
-  email: string
-  department: string
-  designation: string
-  type: 'Faculty' | 'Staff'
-  status: 'Active' | 'On Leave' | 'Terminated'
+interface EmployeeRow {
+  id: number
+  employee_id: string
+  first_name: string
+  last_name: string
+  department_id: number
+  designation_id: number
+  joining_date: string
+  emp_type: 'FACULTY' | 'STAFF'
+  status: 'ACTIVE' | 'INACTIVE'
+  department_name?: string
+  designation_title?: string
 }
 
-const initialEmployees: Employee[] = [
-  { id: 'EMP001', name: 'Dr. Aarav Sharma', email: 'aarav.sharma@campus.edu', department: 'Computer Science', designation: 'Professor', type: 'Faculty', status: 'Active' },
-  { id: 'EMP002', name: 'Dr. Priya Patel', email: 'priya.patel@campus.edu', department: 'Electrical Engineering', designation: 'Associate Professor', type: 'Faculty', status: 'Active' },
-  { id: 'EMP003', name: 'Prof. Rajesh Verma', email: 'rajesh.verma@campus.edu', department: 'Mechanical Engineering', designation: 'Assistant Professor', type: 'Faculty', status: 'On Leave' },
-  { id: 'EMP004', name: 'Sunita Menon', email: 'sunita.menon@campus.edu', department: 'Administration', designation: 'Registrar', type: 'Staff', status: 'Active' },
-  { id: 'EMP005', name: 'Vikram Joshi', email: 'vikram.joshi@campus.edu', department: 'Finance & Accounts', designation: 'Senior Accountant', type: 'Staff', status: 'Active' },
-  { id: 'EMP006', name: 'Ananya Rao', email: 'ananya.rao@campus.edu', department: 'Computer Science', designation: 'Assistant Professor', type: 'Faculty', status: 'Active' }
-]
-
 export const EmployeeMasterPage: React.FC = () => {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
+  const [employees, setEmployees] = useState<EmployeeRow[]>([])
+  const [departments, setDepartments] = useState<{ id: number; name: string }[]>([])
+  const [designations, setDesignations] = useState<{ id: number; title: string }[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [deptFilter, setDeptFilter] = useState('ALL')
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    department: 'Computer Science',
-    designation: 'Assistant Professor',
-    type: 'Faculty' as 'Faculty' | 'Staff'
+    firstName: '',
+    lastName: '',
+    departmentId: '',
+    designationId: '',
+    joiningDate: new Date().toISOString().split('T')[0],
+    empType: 'FACULTY' as 'FACULTY' | 'STAFF'
   })
 
-  const handleCreate = (e: React.FormEvent) => {
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [empRes, deptRes, desigRes] = await Promise.all([
+        apiClient<any[]>('/employees?limit=200'),
+        apiClient<any[]>('/departments'),
+        apiClient<any[]>('/designations')
+      ])
+
+      const depts = Array.isArray(deptRes) ? deptRes : []
+      const desigs = Array.isArray(desigRes) ? desigRes : []
+      setDepartments(depts)
+      setDesignations(desigs)
+
+      const deptMap = Object.fromEntries(depts.map(d => [d.id, d.name]))
+      const desigMap = Object.fromEntries(desigs.map(d => [d.id, d.title]))
+
+      const empList: EmployeeRow[] = (Array.isArray(empRes) ? empRes : []).map(e => ({
+        ...e,
+        department_name: deptMap[e.department_id] || `Dept #${e.department_id}`,
+        designation_title: desigMap[e.designation_id] || `Desig #${e.designation_id}`
+      }))
+      setEmployees(empList)
+
+      if (depts.length > 0 && !formData.departmentId) {
+        setFormData(prev => ({
+          ...prev,
+          departmentId: String(depts[0].id),
+          designationId: desigs.length > 0 ? String(desigs[0].id) : ''
+        }))
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load employee records')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name.trim() || !formData.email.trim()) {
-      toast.error('Name and email are required')
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      toast.error('First and last name are required')
       return
     }
-    const newEmp: Employee = {
-      id: `EMP${String(employees.length + 1).padStart(3, '0')}`,
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      department: formData.department,
-      designation: formData.designation,
-      type: formData.type,
-      status: 'Active'
+    if (!formData.departmentId || !formData.designationId) {
+      toast.error('Department and designation must be selected')
+      return
     }
-    setEmployees(prev => [newEmp, ...prev])
-    setIsDrawerOpen(false)
-    setFormData({ name: '', email: '', department: 'Computer Science', designation: 'Assistant Professor', type: 'Faculty' })
-    toast.success('Employee created successfully!')
+
+    try {
+      const created = await apiClient<any>('/employees', {
+        method: 'POST',
+        data: {
+          first_name: formData.firstName.trim(),
+          last_name: formData.lastName.trim(),
+          department_id: Number(formData.departmentId),
+          designation_id: Number(formData.designationId),
+          joining_date: formData.joiningDate,
+          emp_type: formData.empType,
+          status: 'ACTIVE'
+        }
+      })
+      toast.success(`Employee created! ID: ${created.employee_id || created.id}`)
+      setIsDrawerOpen(false)
+      setFormData({
+        firstName: '',
+        lastName: '',
+        departmentId: departments[0] ? String(departments[0].id) : '',
+        designationId: designations[0] ? String(designations[0].id) : '',
+        joiningDate: new Date().toISOString().split('T')[0],
+        empType: 'FACULTY'
+      })
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create employee')
+    }
   }
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(e => {
-      const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.email.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesDept = deptFilter === 'ALL' || e.department === deptFilter
+      const fullName = `${e.first_name} ${e.last_name}`.toLowerCase()
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
+        e.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesDept = deptFilter === 'ALL' || String(e.department_id) === deptFilter
       return matchesSearch && matchesDept
     })
   }, [employees, searchTerm, deptFilter])
 
-  const columns: Column<Employee>[] = [
+  const columns: Column<EmployeeRow>[] = [
     {
-      key: 'id',
+      key: 'employee_id',
       header: 'Employee ID',
       render: (r) => (
         <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: '13px' }}>
-          {r.id}
+          {r.employee_id}
         </span>
       )
     },
     {
       key: 'name',
       header: 'Employee',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Avatar name={r.name} size="sm" />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '13.5px' }}>{r.name}</span>
-            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{r.email}</span>
+      render: (r) => {
+        const fullName = `${r.first_name} ${r.last_name}`
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Avatar name={fullName} size="sm" />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '13.5px' }}>{fullName}</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Joined: {r.joining_date}</span>
+            </div>
           </div>
-        </div>
-      )
+        )
+      }
     },
     {
       key: 'department',
       header: 'Department',
-      render: (r) => <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{r.department}</span>
+      render: (r) => <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{r.department_name}</span>
     },
     {
       key: 'designation',
       header: 'Designation',
       render: (r) => (
         <span style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: '13px' }}>
-          {r.designation}
+          {r.designation_title}
         </span>
       )
     },
@@ -113,10 +177,10 @@ export const EmployeeMasterPage: React.FC = () => {
           fontWeight: 600,
           padding: '2px 8px',
           borderRadius: '4px',
-          background: r.type === 'Faculty' ? 'var(--color-chip-academic-bg)' : 'var(--color-chip-people-bg)',
-          color: r.type === 'Faculty' ? 'var(--color-chip-academic-text)' : 'var(--color-chip-people-text)'
+          background: r.emp_type === 'FACULTY' ? 'var(--color-chip-academic-bg)' : 'var(--color-chip-people-bg)',
+          color: r.emp_type === 'FACULTY' ? 'var(--color-chip-academic-text)' : 'var(--color-chip-people-text)'
         }}>
-          {r.type}
+          {r.emp_type}
         </span>
       )
     },
@@ -126,23 +190,21 @@ export const EmployeeMasterPage: React.FC = () => {
       render: (r) => (
         <StatusPill
           label={r.status}
-          status={r.status === 'Active' ? 'success' : r.status === 'On Leave' ? 'warning' : 'error'}
+          status={r.status === 'ACTIVE' ? 'success' : 'neutral'}
         />
-      )
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (r) => (
-        <Button variant="subtle" size="sm" onClick={() => toast.success(`Viewing profile of ${r.name}`)}>
-          <MoreHorizontal size={16} />
-        </Button>
       )
     }
   ]
 
-  const facultyCount = employees.filter(e => e.type === 'Faculty').length
-  const staffCount = employees.filter(e => e.type === 'Staff').length
+  const facultyCount = employees.filter(e => e.emp_type === 'FACULTY').length
+  const staffCount = employees.filter(e => e.emp_type === 'STAFF').length
+
+  const deptOptions = useMemo(() => {
+    return [
+      { label: 'All Departments', value: 'ALL' },
+      ...departments.map(d => ({ label: d.name, value: String(d.id) }))
+    ]
+  }, [departments])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -211,7 +273,7 @@ export const EmployeeMasterPage: React.FC = () => {
           <div style={{ position: 'relative', minWidth: '280px', flex: 1, maxWidth: '360px' }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
             <input
-              placeholder="Search name, ID, or email..."
+              placeholder="Search name or employee ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -234,14 +296,7 @@ export const EmployeeMasterPage: React.FC = () => {
           <div style={{ width: '220px' }}>
             <Select
               value={deptFilter}
-              options={[
-                { label: 'All Departments', value: 'ALL' },
-                { label: 'Computer Science', value: 'Computer Science' },
-                { label: 'Electrical Engineering', value: 'Electrical Engineering' },
-                { label: 'Mechanical Engineering', value: 'Mechanical Engineering' },
-                { label: 'Administration', value: 'Administration' },
-                { label: 'Finance & Accounts', value: 'Finance & Accounts' }
-              ]}
+              options={deptOptions}
               onChange={(e) => setDeptFilter(e.target.value)}
             />
           </div>
@@ -269,60 +324,55 @@ export const EmployeeMasterPage: React.FC = () => {
         size="md"
       >
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <Input
-            label="Full Name"
-            placeholder="e.g. Dr. Ramesh Kumar"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-
-          <Input
-            label="Institutional Email"
-            type="email"
-            placeholder="ramesh.kumar@campus.edu"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Input
+              label="First Name"
+              placeholder="e.g. Ramesh"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              required
+            />
+            <Input
+              label="Last Name"
+              placeholder="e.g. Kumar"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              required
+            />
+          </div>
 
           <Select
             label="Classification"
-            value={formData.type}
+            value={formData.empType}
             options={[
-              { label: 'Academic Faculty', value: 'Faculty' },
-              { label: 'Administrative Staff', value: 'Staff' }
+              { label: 'Academic Faculty', value: 'FACULTY' },
+              { label: 'Administrative Staff', value: 'STAFF' }
             ]}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Faculty' | 'Staff' })}
+            onChange={(e) => setFormData({ ...formData, empType: e.target.value as 'FACULTY' | 'STAFF' })}
             required
           />
 
           <Select
             label="Department"
-            value={formData.department}
-            options={[
-              { label: 'Computer Science', value: 'Computer Science' },
-              { label: 'Electrical Engineering', value: 'Electrical Engineering' },
-              { label: 'Mechanical Engineering', value: 'Mechanical Engineering' },
-              { label: 'Administration', value: 'Administration' },
-              { label: 'Finance & Accounts', value: 'Finance & Accounts' }
-            ]}
-            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            value={formData.departmentId}
+            options={departments.map(d => ({ label: d.name, value: String(d.id) }))}
+            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
             required
           />
 
           <Select
             label="Designation"
-            value={formData.designation}
-            options={[
-              { label: 'Professor', value: 'Professor' },
-              { label: 'Associate Professor', value: 'Associate Professor' },
-              { label: 'Assistant Professor', value: 'Assistant Professor' },
-              { label: 'Registrar', value: 'Registrar' },
-              { label: 'Senior Accountant', value: 'Senior Accountant' },
-              { label: 'Clerk / Officer', value: 'Clerk' }
-            ]}
-            onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+            value={formData.designationId}
+            options={designations.map(d => ({ label: d.title, value: String(d.id) }))}
+            onChange={(e) => setFormData({ ...formData, designationId: e.target.value })}
+            required
+          />
+
+          <Input
+            label="Joining Date"
+            type="date"
+            value={formData.joiningDate}
+            onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
             required
           />
 

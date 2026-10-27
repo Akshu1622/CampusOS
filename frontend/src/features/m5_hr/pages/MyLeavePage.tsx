@@ -52,7 +52,7 @@ export const MyLeavePage: React.FC = () => {
     try {
       const [leavesRes, balRes, typesRes] = await Promise.all([
         apiClient<LeaveApplication[]>('/leaves/me'),
-        apiClient<LeaveBalance[]>('/leaves/me/balance?year=2026'),
+        apiClient<LeaveBalance[]>(`/leaves/me/balance?year=${new Date().getFullYear()}`),
         apiClient<LeaveType[]>('/leave-types')
       ])
       setRequests(Array.isArray(leavesRes) ? leavesRes : [])

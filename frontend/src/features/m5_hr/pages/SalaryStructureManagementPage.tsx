@@ -1,94 +1,72 @@
-import React, { useState } from 'react'
-import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer, Input, Select } from '@/components/ui'
-import { Plus, DollarSign, Wallet, ShieldCheck, Edit2, CheckCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Card, StatCard, Button, Table, type Column, Drawer, Input, Select, StatusPill } from '@/components/ui'
+import { Plus, DollarSign, Wallet, ShieldCheck, Edit2, CheckCircle, TrendingUp } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
 
 interface SalaryStructure {
-  id: string
-  name: string
-  code: string
-  basicPay: number
-  hra: number
-  da: number
-  specialAllowance: number
-  pf: number
-  tdsEstimated: number
-  gross: number
-  net: number
-  status: 'Active' | 'Inactive'
+  id: number
+  designation_id: number
+  basic_pay: number
+  allowances: number
+  standard_deductions: number
 }
 
-const initialStructures: SalaryStructure[] = [
-  {
-    id: '1',
-    name: 'Senior Professor (Level 14A)',
-    code: 'SS-PROF-14A',
-    basicPay: 90000,
-    hra: 36000,
-    da: 30000,
-    specialAllowance: 19000,
-    pf: 18000,
-    tdsEstimated: 15000,
-    gross: 175000,
-    net: 142000,
-    status: 'Active'
-  },
-  {
-    id: '2',
-    name: 'Associate Professor (Level 13A)',
-    code: 'SS-ASSC-13A',
-    basicPay: 75000,
-    hra: 30000,
-    da: 25000,
-    specialAllowance: 20000,
-    pf: 15000,
-    tdsEstimated: 12000,
-    gross: 150000,
-    net: 123000,
-    status: 'Active'
-  },
-  {
-    id: '3',
-    name: 'Assistant Professor (Level 10)',
-    code: 'SS-ASST-10',
-    basicPay: 57700,
-    hra: 23080,
-    da: 19618,
-    specialAllowance: 9602,
-    pf: 11540,
-    tdsEstimated: 8460,
-    gross: 110000,
-    net: 90000,
-    status: 'Active'
-  },
-]
+interface Designation {
+  id: number
+  title: string
+  job_level: number
+}
 
 export const SalaryStructureManagementPage: React.FC = () => {
-  const [structures, setStructures] = useState<SalaryStructure[]>(initialStructures)
+  const [structures, setStructures] = useState<SalaryStructure[]>([])
+  const [designations, setDesignations] = useState<Designation[]>([])
+  const [loading, setLoading] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SalaryStructure | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
-    name: '',
-    code: '',
-    basicPay: 60000,
-    hra: 24000,
-    da: 20000,
-    specialAllowance: 16000,
-    pf: 12000,
-    tdsEstimated: 8000
+    designation_id: '',
+    basic_pay: 50000,
+    allowances: 15000,
+    standard_deductions: 8000
   })
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [structRes, desigRes] = await Promise.all([
+        apiClient<SalaryStructure[]>('/salary-structures'),
+        apiClient<Designation[]>('/designations')
+      ])
+      setStructures(Array.isArray(structRes) ? structRes : [])
+      setDesignations(Array.isArray(desigRes) ? desigRes : [])
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load salary structures')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const getDesignation = (id: number) => {
+    return designations.find(d => d.id === id)
+  }
 
   const handleOpenAdd = () => {
     setEditingItem(null)
+    // Find first designation that doesn't have a structure yet
+    const usedIds = new Set(structures.map(s => s.designation_id))
+    const availableDesig = designations.find(d => !usedIds.has(d.id))
     setFormData({
-      name: '',
-      code: '',
-      basicPay: 60000,
-      hra: 24000,
-      da: 20000,
-      specialAllowance: 16000,
-      pf: 12000,
-      tdsEstimated: 8000
+      designation_id: availableDesig ? String(availableDesig.id) : (designations[0] ? String(designations[0].id) : ''),
+      basic_pay: 60000,
+      allowances: 20000,
+      standard_deductions: 8000
     })
     setIsDrawerOpen(true)
   }
@@ -96,98 +74,145 @@ export const SalaryStructureManagementPage: React.FC = () => {
   const handleOpenEdit = (item: SalaryStructure) => {
     setEditingItem(item)
     setFormData({
-      name: item.name,
-      code: item.code,
-      basicPay: item.basicPay,
-      hra: item.hra,
-      da: item.da,
-      specialAllowance: item.specialAllowance,
-      pf: item.pf,
-      tdsEstimated: item.tdsEstimated
+      designation_id: String(item.designation_id),
+      basic_pay: item.basic_pay,
+      allowances: item.allowances,
+      standard_deductions: item.standard_deductions
     })
     setIsDrawerOpen(true)
   }
 
-  const handleSave = () => {
-    if (!formData.name || !formData.code) return
-    const gross = formData.basicPay + formData.hra + formData.da + formData.specialAllowance
-    const net = gross - (formData.pf + formData.tdsEstimated)
-
-    if (editingItem) {
-      setStructures(prev => prev.map(s => s.id === editingItem.id ? { ...s, ...formData, gross, net } : s))
-    } else {
-      const newItem: SalaryStructure = {
-        id: String(structures.length + 1),
-        ...formData,
-        gross,
-        net,
-        status: 'Active'
-      }
-      setStructures(prev => [...prev, newItem])
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.designation_id && !editingItem) {
+      toast.error('Please select a designation')
+      return
     }
-    setIsDrawerOpen(false)
+    if (formData.basic_pay < 0 || formData.allowances < 0 || formData.standard_deductions < 0) {
+      toast.error('Amounts cannot be negative')
+      return
+    }
+
+    setSaving(true)
+    try {
+      if (editingItem) {
+        await apiClient(`/salary-structures/${editingItem.id}`, {
+          method: 'PUT',
+          data: {
+            basic_pay: Number(formData.basic_pay),
+            allowances: Number(formData.allowances),
+            standard_deductions: Number(formData.standard_deductions)
+          }
+        })
+        toast.success('Salary structure updated successfully')
+      } else {
+        await apiClient('/salary-structures', {
+          method: 'POST',
+          data: {
+            designation_id: Number(formData.designation_id),
+            basic_pay: Number(formData.basic_pay),
+            allowances: Number(formData.allowances),
+            standard_deductions: Number(formData.standard_deductions)
+          }
+        })
+        toast.success('Salary structure created successfully')
+      }
+      setIsDrawerOpen(false)
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save salary structure')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const grossCalc = Number(formData.basic_pay || 0) + Number(formData.allowances || 0)
+  const netCalc = Math.max(0, grossCalc - Number(formData.standard_deductions || 0))
+
+  const totalStructures = structures.length
+  const avgGross = totalStructures > 0
+    ? Math.round(structures.reduce((acc, s) => acc + (s.basic_pay + s.allowances), 0) / totalStructures)
+    : 0
+  const avgDeductions = totalStructures > 0
+    ? Math.round(structures.reduce((acc, s) => acc + s.standard_deductions, 0) / totalStructures)
+    : 0
+  const totalCommitment = structures.reduce((acc, s) => acc + (s.basic_pay + s.allowances), 0)
 
   const columns: Column<SalaryStructure>[] = [
     {
-      header: 'Structure Title',
-      key: 'name',
-      render: (r) => (
-        <div>
-          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.name}</div>
-          <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{r.code}</div>
-        </div>
-      )
+      header: 'Designation / Cadre',
+      key: 'designation_id',
+      render: (r) => {
+        const desig = getDesignation(r.designation_id)
+        return (
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {desig ? desig.title : `Designation #${r.designation_id}`}
+            </div>
+            <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>
+              Job Level {desig ? desig.job_level : '—'}
+            </div>
+          </div>
+        )
+      }
     },
     {
       header: 'Basic Pay',
-      key: 'basicPay',
-      render: (r) => <span style={{ fontWeight: 600 }}>₹{r.basicPay.toLocaleString()}</span>
+      key: 'basic_pay',
+      render: (r) => <span style={{ fontWeight: 600 }}>₹{Number(r.basic_pay).toLocaleString()}</span>
+    },
+    {
+      header: 'Allowances (HRA/DA/Special)',
+      key: 'allowances',
+      render: (r) => (
+        <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+          ₹{Number(r.allowances).toLocaleString()}
+        </span>
+      )
     },
     {
       header: 'Gross Compensation',
-      key: 'gross',
+      key: 'id',
       render: (r) => (
         <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          ₹{r.gross.toLocaleString()}
+          ₹{(Number(r.basic_pay) + Number(r.allowances)).toLocaleString()}
         </span>
       )
     },
     {
-      header: 'Statutory Deductions',
-      key: 'pf',
+      header: 'Standard Deductions',
+      key: 'standard_deductions',
       render: (r) => (
         <span style={{ fontSize: '13px', color: 'var(--color-error)', fontWeight: 600 }}>
-          ₹{(r.pf + r.tdsEstimated).toLocaleString()}
+          -₹{Number(r.standard_deductions).toLocaleString()}
         </span>
       )
     },
     {
-      header: 'Est. Net Take-Home',
-      key: 'net',
-      render: (r) => (
-        <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>
-          ₹{r.net.toLocaleString()}
-        </span>
-      )
-    },
-    {
-      header: 'Status',
-      key: 'status',
-      render: (r) => (
-        <StatusPill label={r.status} status={r.status === 'Active' ? 'success' : 'neutral'} />
-      )
+      header: 'Net Take-Home',
+      key: 'id',
+      render: (r) => {
+        const gross = Number(r.basic_pay) + Number(r.allowances)
+        const net = Math.max(0, gross - Number(r.standard_deductions))
+        return (
+          <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+            ₹{net.toLocaleString()}
+          </span>
+        )
+      }
     },
     {
       header: 'Action',
       key: 'id',
       render: (r) => (
         <Button variant="subtle" size="sm" onClick={() => handleOpenEdit(r)}>
-          <Edit2 size={13} />
+          <Edit2 size={13} style={{ marginRight: '4px' }} /> Edit
         </Button>
       )
     }
   ]
+
+  const usedDesignationIds = new Set(structures.map(s => s.designation_id))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -203,7 +228,7 @@ export const SalaryStructureManagementPage: React.FC = () => {
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Configure basic pay slabs, HRA percentages, dearness allowance, and provident fund rules.
+            Configure basic pay slabs, dearness allowance, HRA, and standard statutory deduction profiles per cadre.
           </p>
         </div>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenAdd}>
@@ -215,37 +240,37 @@ export const SalaryStructureManagementPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
           label="Active Structures"
-          value={structures.length}
+          value={totalStructures}
           tone="positive"
           icon={<ShieldCheck size={18} />}
-          description="Across university cadres"
+          description="Across designated cadres"
         />
         <StatCard
-          label="Average Faculty Gross"
-          value="₹1.45L"
+          label="Average Cadre Gross"
+          value={`₹${avgGross.toLocaleString()}`}
           tone="accent"
           icon={<DollarSign size={18} />}
           description="Monthly basic + allowances"
         />
         <StatCard
-          label="Standard EPF Contribution"
-          value="12%"
+          label="Average Deductions"
+          value={`₹${avgDeductions.toLocaleString()}`}
           tone="neutral"
           icon={<Wallet size={18} />}
-          description="Of basic component"
+          description="Statutory EPF & TDS profile"
         />
         <StatCard
-          label="Tax Compliance"
-          value="Section 192"
+          label="Monthly Scale Outlay"
+          value={`₹${totalCommitment.toLocaleString()}`}
           tone="positive"
-          icon={<CheckCircle size={18} />}
-          description="Old/New regime support"
+          icon={<TrendingUp size={18} />}
+          description="Aggregate across scales"
         />
       </div>
 
       {/* Table */}
       <Card padding={0}>
-        <Table data={structures} columns={columns} keyExtractor={(r) => r.id} />
+        <Table data={structures} columns={columns} keyExtractor={(r) => String(r.id)} isLoading={loading} />
       </Card>
 
       {/* Drawer */}
@@ -257,64 +282,100 @@ export const SalaryStructureManagementPage: React.FC = () => {
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             <Button variant="secondary" onClick={() => setIsDrawerOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave}>Save Structure</Button>
+            <Button variant="primary" onClick={handleSave} isLoading={saving}>
+              {editingItem ? 'Update Structure' : 'Save Structure'}
+            </Button>
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Structure Title</label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. Senior Research Scientist"
-            />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+              Designation / Cadre <span style={{ color: 'var(--color-error)' }}>*</span>
+            </label>
+            {editingItem ? (
+              <Input
+                value={getDesignation(editingItem.designation_id)?.title || `Cadre #${editingItem.designation_id}`}
+                disabled
+              />
+            ) : (
+              <Select
+                value={formData.designation_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, designation_id: e.target.value }))}
+                options={designations.map(d => ({
+                  value: String(d.id),
+                  label: `${d.title} (Level ${d.job_level})${usedDesignationIds.has(d.id) ? ' [Already Configured]' : ''}`
+                }))}
+              />
+            )}
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Scale Code</label>
-            <Input
-              value={formData.code}
-              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-              placeholder="e.g. SS-SRS-12"
-            />
-          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Basic Pay (₹)</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Basic Pay (₹) <span style={{ color: 'var(--color-error)' }}>*</span>
+              </label>
               <Input
                 type="number"
-                value={formData.basicPay}
-                onChange={(e) => setFormData(prev => ({ ...prev, basicPay: Number(e.target.value) }))}
+                min="0"
+                value={formData.basic_pay}
+                onChange={(e) => setFormData(prev => ({ ...prev, basic_pay: Number(e.target.value) }))}
+                required
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>HRA (₹)</label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Allowances (₹) <span style={{ color: 'var(--color-error)' }}>*</span>
+              </label>
               <Input
                 type="number"
-                value={formData.hra}
-                onChange={(e) => setFormData(prev => ({ ...prev, hra: Number(e.target.value) }))}
+                min="0"
+                value={formData.allowances}
+                onChange={(e) => setFormData(prev => ({ ...prev, allowances: Number(e.target.value) }))}
+                required
               />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Dearness Allowance (DA)</label>
-              <Input
-                type="number"
-                value={formData.da}
-                onChange={(e) => setFormData(prev => ({ ...prev, da: Number(e.target.value) }))}
-              />
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+              Standard Deductions (₹) <span style={{ color: 'var(--color-error)' }}>*</span>
+            </label>
+            <Input
+              type="number"
+              min="0"
+              value={formData.standard_deductions}
+              onChange={(e) => setFormData(prev => ({ ...prev, standard_deductions: Number(e.target.value) }))}
+              required
+            />
+          </div>
+
+          {/* Live Preview Box */}
+          <div style={{
+            padding: '14px',
+            borderRadius: '8px',
+            background: 'var(--color-surface-subtle)',
+            border: '1px solid var(--color-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            fontSize: '13px'
+          }}>
+            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>Calculated Projections:</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>Gross Monthly:</span>
+              <strong style={{ color: 'var(--color-text-primary)' }}>₹{grossCalc.toLocaleString()}</strong>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Special Allowance</label>
-              <Input
-                type="number"
-                value={formData.specialAllowance}
-                onChange={(e) => setFormData(prev => ({ ...prev, specialAllowance: Number(e.target.value) }))}
-              />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>Total Deductions:</span>
+              <strong style={{ color: 'var(--color-error)' }}>-₹{Number(formData.standard_deductions || 0).toLocaleString()}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: '6px' }}>
+              <span style={{ fontWeight: 600 }}>Est. Net Take-Home:</span>
+              <strong style={{ color: 'var(--color-success)', fontSize: '15px' }}>₹{netCalc.toLocaleString()}</strong>
             </div>
           </div>
-        </div>
+        </form>
       </Drawer>
     </div>
   )

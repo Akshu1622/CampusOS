@@ -1,67 +1,96 @@
-import React, { useState } from 'react'
-import { Card, StatCard, Button, Table, type Column, StatusPill, Drawer, Input, Select } from '@/components/ui'
-import { Plus, Briefcase, Award, Users, CheckCircle, Edit2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Card, StatCard, Button, Table, type Column, Drawer, Input } from '@/components/ui'
+import { Plus, Briefcase, Award, Edit2 } from 'lucide-react'
+import { apiClient } from '@/api/client'
+import { toast } from 'react-hot-toast'
 
-interface Designation {
-  id: string
+interface DesignationRow {
+  id: number
   title: string
-  code: string
-  level: string
-  cadre: 'Teaching' | 'Non-Teaching' | 'Administrative'
-  employees: number
-  status: 'Active' | 'Inactive'
+  job_level: number
 }
 
-const initialDesignations: Designation[] = [
-  { id: '1', title: 'Professor & Chair', code: 'DES-PROF', level: 'Level 14A', cadre: 'Teaching', employees: 12, status: 'Active' },
-  { id: '2', title: 'Associate Professor', code: 'DES-ASSC', level: 'Level 13A', cadre: 'Teaching', employees: 25, status: 'Active' },
-  { id: '3', title: 'Assistant Professor', code: 'DES-ASST', level: 'Level 10', cadre: 'Teaching', employees: 40, status: 'Active' },
-  { id: '4', title: 'Head of Laboratory Instruction', code: 'DES-HLAB', level: 'Level 9', cadre: 'Non-Teaching', employees: 8, status: 'Active' },
-  { id: '5', title: 'Chief Human Resources Officer', code: 'DES-CHRO', level: 'Level 12', cadre: 'Administrative', employees: 2, status: 'Active' },
-]
-
 export const DesignationManagementPage: React.FC = () => {
-  const [designations, setDesignations] = useState<Designation[]>(initialDesignations)
+  const [designations, setDesignations] = useState<DesignationRow[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Designation | null>(null)
+  const [editingItem, setEditingItem] = useState<DesignationRow | null>(null)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
-    code: '',
-    level: 'Level 10',
-    cadre: 'Teaching' as Designation['cadre']
+    jobLevel: 5
   })
 
-  const totalEmployees = designations.reduce((sum, d) => sum + d.employees, 0)
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient<DesignationRow[]>('/designations')
+      setDesignations(Array.isArray(res) ? res : [])
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load designations')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const handleOpenAdd = () => {
     setEditingItem(null)
-    setFormData({ title: '', code: '', level: 'Level 10', cadre: 'Teaching' })
+    setFormData({ title: '', jobLevel: 5 })
     setIsDrawerOpen(true)
   }
 
-  const handleOpenEdit = (item: Designation) => {
+  const handleOpenEdit = (item: DesignationRow) => {
     setEditingItem(item)
-    setFormData({ title: item.title, code: item.code, level: item.level, cadre: item.cadre })
+    setFormData({ title: item.title, jobLevel: item.job_level })
     setIsDrawerOpen(true)
   }
 
-  const handleSave = () => {
-    if (!formData.title || !formData.code) return
-    if (editingItem) {
-      setDesignations(prev => prev.map(d => d.id === editingItem.id ? { ...d, ...formData } : d))
-    } else {
-      const newItem: Designation = {
-        id: String(designations.length + 1),
-        ...formData,
-        employees: 0,
-        status: 'Active'
-      }
-      setDesignations(prev => [...prev, newItem])
+  const handleSave = async () => {
+    if (!formData.title.trim()) {
+      toast.error('Title is required')
+      return
     }
-    setIsDrawerOpen(false)
+
+    try {
+      if (editingItem) {
+        await apiClient(`/designations/${editingItem.id}`, {
+          method: 'PUT',
+          data: {
+            title: formData.title.trim(),
+            job_level: Number(formData.jobLevel)
+          }
+        })
+        toast.success('Designation updated successfully!')
+      } else {
+        await apiClient('/designations', {
+          method: 'POST',
+          data: {
+            title: formData.title.trim(),
+            job_level: Number(formData.jobLevel)
+          }
+        })
+        toast.success('Designation created successfully!')
+      }
+      setIsDrawerOpen(false)
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save designation')
+    }
   }
 
-  const columns: Column<Designation>[] = [
+  const columns: Column<DesignationRow>[] = [
+    {
+      header: 'ID',
+      key: 'id',
+      render: (r) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)' }}>
+          #{r.id}
+        </span>
+      )
+    },
     {
       header: 'Designation Title',
       key: 'title',
@@ -79,16 +108,13 @@ export const DesignationManagementPage: React.FC = () => {
           }}>
             <Briefcase size={14} />
           </div>
-          <div>
-            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.title}</div>
-            <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{r.code}</div>
-          </div>
+          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{r.title}</div>
         </div>
       )
     },
     {
-      header: 'Pay Band / Level',
-      key: 'level',
+      header: 'Job Level / Band',
+      key: 'job_level',
       render: (r) => (
         <span style={{
           fontSize: '12px',
@@ -99,30 +125,13 @@ export const DesignationManagementPage: React.FC = () => {
           color: 'var(--color-text-secondary)',
           border: '1px solid var(--color-border)'
         }}>
-          {r.level}
+          Level {r.job_level}
         </span>
-      )
-    },
-    { header: 'Cadre', key: 'cadre', render: (r) => <span style={{ fontWeight: 500 }}>{r.cadre}</span> },
-    {
-      header: 'Occupied Seats',
-      key: 'employees',
-      render: (r) => (
-        <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-          {r.employees} Staff
-        </span>
-      )
-    },
-    {
-      header: 'Status',
-      key: 'status',
-      render: (r) => (
-        <StatusPill label={r.status} status={r.status === 'Active' ? 'success' : 'neutral'} />
       )
     },
     {
       header: 'Action',
-      key: 'id',
+      key: 'action',
       render: (r) => (
         <Button variant="subtle" size="sm" onClick={() => handleOpenEdit(r)}>
           <Edit2 size={13} />
@@ -163,17 +172,10 @@ export const DesignationManagementPage: React.FC = () => {
           description="Ranks in service hierarchy"
         />
         <StatCard
-          label="Active Staff Count"
-          value={totalEmployees}
-          tone="positive"
-          icon={<Users size={18} />}
-          description="Mapped across departments"
-        />
-        <StatCard
-          label="Academic Cadre"
-          value={designations.filter(d => d.cadre === 'Teaching').length}
+          label="Highest Band"
+          value={designations.length > 0 ? `Level ${Math.max(...designations.map(d => d.job_level))}` : 'None'}
           tone="accent"
-          description="Professors & Instructors"
+          description="Top seniority level"
         />
         <StatCard
           label="Operational Compliance"
@@ -185,7 +187,7 @@ export const DesignationManagementPage: React.FC = () => {
 
       {/* Table */}
       <Card padding={0}>
-        <Table data={designations} columns={columns} keyExtractor={(r) => r.id} />
+        <Table data={designations} columns={columns} keyExtractor={(r) => String(r.id)} />
       </Card>
 
       {/* Drawer */}
@@ -207,35 +209,16 @@ export const DesignationManagementPage: React.FC = () => {
             <Input
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g. Associate Dean of Research"
+              placeholder="e.g. Professor, Associate Professor"
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Code</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Job Level (Rank Number)</label>
             <Input
-              value={formData.code}
-              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-              placeholder="e.g. DES-ADEAN"
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Cadre</label>
-            <Select
-              value={formData.cadre}
-              onChange={(e) => setFormData(prev => ({ ...prev, cadre: e.target.value as any }))}
-              options={[
-                { value: 'Teaching', label: 'Teaching Cadre' },
-                { value: 'Non-Teaching', label: 'Non-Teaching / Technical' },
-                { value: 'Administrative', label: 'Administrative Officer' }
-              ]}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>Salary Scale Band</label>
-            <Input
-              value={formData.level}
-              onChange={(e) => setFormData(prev => ({ ...prev, level: e.target.value }))}
-              placeholder="e.g. Level 13A"
+              type="number"
+              value={String(formData.jobLevel)}
+              onChange={(e) => setFormData(prev => ({ ...prev, jobLevel: Number(e.target.value) }))}
+              placeholder="e.g. 10"
             />
           </div>
         </div>

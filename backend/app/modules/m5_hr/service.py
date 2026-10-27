@@ -90,14 +90,25 @@ def get_leave_entitlements(db: Session):
 def apply_leave(db: Session, emp_id: int, data: schemas.LeaveApplicationCreate):
     # Verify employee exists
     get_employee(db, emp_id)
-    # Optional: check if they have enough balance via fn_leave_balance. Wait, PRD 9.3 says:
-    # "Leave: days <= available balance"
-    # Actually, the fn_leave_balance only computes for the given year.
+
+    # 1. Overlap Check (PRD §9.3 & Error Code 55002)
+    if repository.check_leave_overlap(db, emp_id, data.start_date, data.end_date):
+        raise APIError(
+            code="OVERLAPPING_LEAVE",
+            message="The requested leave dates overlap with an existing approved or pending leave.",
+            status_code=status.HTTP_409_CONFLICT
+        )
+
+    # 2. Balance Check (PRD §9.3 & Error Code 55001)
     year = data.start_date.year
     bal = repository.get_leave_balance(db, emp_id, data.leave_type_id, year)
     if data.days > bal:
-        raise APIError(code="INSUFFICIENT_BALANCE", message="Insufficient leave balance", status_code=status.HTTP_400_BAD_REQUEST)
-        
+        raise APIError(
+            code="LEAVE_EXCEEDS_BALANCE",
+            message=f"Insufficient leave balance. Requested {data.days} days, available {bal} days.",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
     leave_id = repository.create_leave_application(db, emp_id, data)
     return get_leave_application(db, leave_id)
 
@@ -180,3 +191,7 @@ def get_payroll(db: Session, month: str):
 def get_my_payslips(db: Session, emp_id: int):
     res = repository.get_payslips_for_employee(db, emp_id)
     return [schemas.PayslipResponse(**r) for r in res]
+
+def get_payroll_register(db: Session, month: str = None, dept_id: int = None):
+    return repository.get_payroll_register(db, month=month, dept_id=dept_id)
+

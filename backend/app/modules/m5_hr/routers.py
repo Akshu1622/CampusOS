@@ -109,6 +109,16 @@ def finalize_payroll(month: str, db: Session = Depends(get_db), user: CurrentUse
 def get_payroll_run(month: str, db: Session = Depends(get_db), _=Depends(require_role(["Admin", "SuperAdmin"]))):
     return service.get_payroll(db, month)
 
+@m5_router.get("/payroll-register", response_model=List[schemas.PayrollRegisterRecord])
+def get_payroll_register(
+    month: Optional[str] = None,
+    dept_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    _=Depends(require_role(["Admin", "SuperAdmin"]))
+):
+    return repository.get_payroll_register(db, month=month, dept_id=dept_id)
+
+
 # --- Payslips (Faculty) ---
 @m5_router.get("/me/payslips", response_model=List[schemas.PayslipResponse])
 def get_my_payslips(db: Session = Depends(get_db), user: CurrentUser = Depends(require_role(["Faculty", "Admin", "SuperAdmin"]))):

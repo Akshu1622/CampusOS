@@ -187,3 +187,19 @@ class PayrollRunResponse(BaseModel):
     payslips: List[PayslipResponse] = []
 
     model_config = {"from_attributes": True}
+
+class PayrollRegisterRecord(BaseModel):
+    payroll_month: str
+    run_status: str
+    department_name: str
+    employee_id: int
+    global_employee_id: str
+    employee_name: str
+    designation: str
+    gross_pay: float
+    total_deductions: float
+    net_pay: float
+    leave_days_deducted: float
+
+    model_config = {"from_attributes": True}
+
