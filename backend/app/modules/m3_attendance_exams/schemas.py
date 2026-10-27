@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Literal
+from pydantic import BaseModel, Field
+from typing import List, Optional, Literal, Dict
 from datetime import date, datetime
 
 class PaginationParams(BaseModel):
@@ -58,12 +58,16 @@ class AttendanceSessionResponse(BaseModel):
     slot: str
     marked_by: int
     marked_at: datetime
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
+    section: Optional[str] = None
     records: Optional[List[AttendanceRecordResponse]] = None
 
 class MyAttendanceResponse(BaseModel):
     offering_id: int
     course_code: str
     course_title: str
+    credits: Optional[int] = None
     sessions_held: int
     sessions_attended: int
     attendance_pct: float
@@ -71,10 +75,12 @@ class MyAttendanceResponse(BaseModel):
 
 class AttendanceShortageReport(BaseModel):
     student_id: int
+    global_student_id: Optional[str] = None
     first_name: str
     last_name: str
     offering_id: int
     course_code: str
+    course_title: Optional[str] = None
     attendance_pct: float
 
 # --- Exam Management ---
@@ -97,6 +103,12 @@ class ExamUpdate(BaseModel):
 
 class ExamResponse(ExamBase):
     id: int
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
+    section: Optional[str] = None
+    term_id: Optional[int] = None
+    term_label: Optional[str] = None
+    is_open: Optional[bool] = None
 
 # --- Exam Registration ---
 class ExamRegistrationCreate(BaseModel):
@@ -106,8 +118,39 @@ class ExamRegistrationResponse(BaseModel):
     id: int
     exam_id: int
     student_id: int
+    student_name: Optional[str] = None
+    global_student_id: Optional[str] = None
+    exam_type: Optional[str] = None
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
     status: Literal['REGISTERED', 'CANCELLED']
     registered_at: datetime
+
+class ExamBlockedResponse(BaseModel):
+    student_id: int
+    global_student_id: str
+    student_name: str
+    term_label: str
+    course_code: str
+    course_title: str
+    attendance_pct: float
+
+class StudentAvailableExamResponse(BaseModel):
+    exam_id: int
+    offering_id: int
+    course_code: str
+    course_title: str
+    section: str
+    exam_type: str
+    exam_date: date
+    max_marks: float
+    reg_start_date: datetime
+    reg_end_date: datetime
+    is_window_open: bool
+    is_registered: bool
+    attendance_pct: float
+    is_eligible: bool
+    block_reason: Optional[str] = None
 
 # --- Marks Entry ---
 class MarkInput(BaseModel):
@@ -122,7 +165,8 @@ class MarksResultResponse(BaseModel):
     student_id: int
     first_name: str
     last_name: str
-    marks: float
+    global_student_id: Optional[str] = None
+    marks: Optional[float] = None
     grade: Optional[str] = None
     grade_points: Optional[float] = None
     is_published: bool
@@ -157,3 +201,4 @@ class CourseResultSummaryResponse(BaseModel):
     total_passed: int
     pass_percentage: float
     average_marks: float
+    grade_distribution: Optional[Dict[str, int]] = None

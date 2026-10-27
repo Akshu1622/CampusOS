@@ -2,8 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.modules.m3_attendance_exams.repository import M3Repository
 from app.core.errors import APIError
-from sqlalchemy.exc import DBAPIError
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 class M3Service:
     def __init__(self, db: Session):
@@ -11,7 +10,9 @@ class M3Service:
 
     # --- Grade Scale ---
     def get_grade_scales(self, skip: int, limit: int):
-        return self.repo.get_grade_scales(skip, limit)
+        rows = self.repo.get_grade_scales(skip, limit)
+        total = self.repo.count_grade_scales()
+        return rows, total
 
     def get_grade_scale(self, id: int):
         gs = self.repo.get_grade_scale_by_id(id)
@@ -34,18 +35,16 @@ class M3Service:
         self.repo.delete_grade_scale(id)
 
     # --- Attendance ---
-    def get_attendance_sessions(self, skip: int, limit: int, offering_id: int = None):
-        rows = self.repo.get_attendance_sessions(skip, limit, offering_id)
-        total = self.repo.count_attendance_sessions(offering_id)
+    def get_attendance_sessions(self, skip: int, limit: int, offering_id: int = None, date_str: str = None):
+        rows = self.repo.get_attendance_sessions(skip, limit, offering_id, date_str)
+        total = self.repo.count_attendance_sessions(offering_id, date_str)
         return rows, total
 
     def mark_attendance(self, data: dict, acting_user: int, has_admin_override: bool):
         offering_id = data["offering_id"]
-        # Authorization check
         if not has_admin_override and not self.repo.check_faculty_offering(offering_id, acting_user):
             raise APIError("FORBIDDEN", "You are not assigned to this offering", 403)
 
-        # Ensure session unique
         existing = self.repo.get_attendance_session_unique(offering_id, str(data["session_date"]), data["slot"])
         if existing:
             raise APIError("CONFLICT", "Session already exists for this date and slot", 409)
@@ -71,7 +70,7 @@ class M3Service:
             {"uid": user_id}
         ).fetchone()
         if not res or not res[0]:
-            raise APIError("FORBIDDEN", "Not a student", 403)
+            raise APIError("FORBIDDEN", "No student profile linked to this user", 403)
         return res[0]
 
     def get_my_attendance(self, user_id: int):
@@ -80,30 +79,31 @@ class M3Service:
         res = []
         for a in att:
             elig = True
-            if a.attendance_pct is not None and float(a.attendance_pct) < 75.0:
+            pct = float(a.attendance_pct) if a.attendance_pct is not None else 0.0
+            if pct < 75.0:
                 elig = False
             res.append({
                 "offering_id": a.offering_id,
                 "course_code": a.course_code,
                 "course_title": a.course_title,
+                "credits": getattr(a, "credits", None),
                 "sessions_held": a.sessions_held,
                 "sessions_attended": a.sessions_attended,
-                "attendance_pct": float(a.attendance_pct) if a.attendance_pct is not None else 0.0,
+                "attendance_pct": pct,
                 "eligible_for_exam": elig
             })
         return res
 
-    def get_attendance_shortage(self, skip: int, limit: int):
-        try:
-            rows = self.repo.get_attendance_shortage(skip, limit)
-            total = self.repo.count_attendance_shortage()
-            return rows, total
-        except Exception:
-            return [], 0
+    def get_attendance_shortage(self, skip: int, limit: int, threshold: float = 75.0, search: str = None):
+        rows = self.repo.get_attendance_shortage(skip, limit, threshold, search)
+        total = self.repo.count_attendance_shortage(threshold, search)
+        return rows, total
 
     # --- Exams ---
-    def get_exams(self, skip: int, limit: int, offering_id: int = None):
-        return self.repo.get_exams(skip, limit, offering_id)
+    def get_exams(self, skip: int, limit: int, offering_id: int = None, term_id: int = None, search: str = None):
+        rows = self.repo.get_exams(skip, limit, offering_id, term_id, search)
+        total = self.repo.count_exams(offering_id, term_id, search)
+        return rows, total
 
     def get_exam(self, id: int):
         e = self.repo.get_exam_by_id(id)
@@ -134,13 +134,22 @@ class M3Service:
         student_id = self._get_student_id(user_id)
         return self.repo.get_exam_registration(exam_id, student_id)
 
-    def get_exam_registrations(self, skip: int, limit: int, exam_id: int = None, student_id: int = None):
-        return self.repo.get_exam_registrations(skip, limit, exam_id, student_id)
+    def get_exam_registrations(self, skip: int, limit: int, exam_id: int = None, student_id: int = None, search: str = None):
+        rows = self.repo.get_exam_registrations(skip, limit, exam_id, student_id, search)
+        total = self.repo.count_exam_registrations(exam_id, student_id, search)
+        return rows, total
+
+    def get_blocked_exam_students(self, skip: int, limit: int, search: str = None):
+        return self.repo.get_blocked_exam_students(skip, limit, search)
+
+    def get_student_available_exams(self, user_id: int):
+        student_id = self._get_student_id(user_id)
+        return self.repo.get_student_available_exams(student_id)
 
     def register_for_exam(self, exam_id: int, user_id: int):
         student_id = self._get_student_id(user_id)
-            
-        e = self.get_exam(exam_id)
+        self.get_exam(exam_id)
+        
         # Check duplicate
         if self.repo.get_exam_registration(exam_id, student_id):
             raise APIError("EXAM_DUPLICATE_REGISTRATION", "The student is already registered for this exam.", 409)
@@ -188,9 +197,7 @@ class M3Service:
 
     def get_my_results(self, user_id: int):
         student_id = self._get_student_id(user_id)
-            
         res = self.repo.get_my_results(student_id)
-        # Format the response
         terms = {}
         for r in res:
             tid = r.term_id
@@ -220,17 +227,4 @@ class M3Service:
 
     def get_course_result_summary(self, exam_id: int):
         self.get_exam(exam_id)
-        try:
-            res = self.repo.get_course_result_summary(exam_id)
-            if res and res.total_registered:
-                return {
-                    "exam_id": exam_id,
-                    "total_registered": res.total_registered,
-                    "total_passed": res.total_passed,
-                    "pass_percentage": (res.total_passed / res.total_registered * 100) if res.total_registered > 0 else 0,
-                    "average_marks": float(res.average_marks) if res.average_marks is not None else 0.0
-                }
-            else:
-                return {"exam_id": exam_id, "total_registered": 0, "total_passed": 0, "pass_percentage": 0.0, "average_marks": 0.0}
-        except Exception:
-            return {"exam_id": exam_id, "total_registered": 0, "total_passed": 0, "pass_percentage": 0.0, "average_marks": 0.0}
+        return self.repo.get_course_result_summary(exam_id)

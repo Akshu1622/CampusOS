@@ -41,35 +41,60 @@ class M2Repository:
         self.db.execute(q, {"id": id})
         self.db.commit()
 
-    def get_courses(self, skip: int, limit: int, department_id: Optional[int] = None) -> Tuple[List[Any], int]:
+    def get_courses(self, skip: int, limit: int, department_id: Optional[int] = None, search: Optional[str] = None) -> Tuple[List[Any], int]:
         filters = "WHERE 1=1"
         params = {"skip": skip, "limit": limit}
         if department_id is not None:
-            filters += " AND department_id = :dept_id"
+            filters += " AND c.department_id = :dept_id"
             params["dept_id"] = department_id
+        if search:
+            filters += " AND (c.code LIKE :search OR c.title LIKE :search)"
+            params["search"] = f"%{search}%"
             
-        count_q = text(f"SELECT COUNT(*) FROM course {filters}")
+        count_q = text(f"SELECT COUNT(*) FROM course c {filters}")
         total = self.db.execute(count_q, params).scalar()
         
-        q = text(f"SELECT id, code, title, credits, department_id, status FROM course {filters} ORDER BY code LIMIT :limit OFFSET :skip")
+        q = text(f"""
+            SELECT c.id, c.code, c.title, c.credits, c.department_id, d.name as department_name, c.status
+            FROM course c
+            LEFT JOIN department d ON c.department_id = d.id
+            {filters}
+            ORDER BY c.code LIMIT :limit OFFSET :skip
+        """)
         rows = self.db.execute(q, params).fetchall()
         return rows, total
 
     # --- Curriculum Mapping ---
-    def get_curriculum(self, skip: int, limit: int, program_id: Optional[int] = None, semester: Optional[int] = None) -> Tuple[List[Any], int]:
+    def get_curriculum(self, skip: int, limit: int, program_id: Optional[int] = None, semester: Optional[int] = None, search: Optional[str] = None) -> Tuple[List[Any], int]:
         filters = "WHERE 1=1"
         params = {"skip": skip, "limit": limit}
         if program_id is not None:
-            filters += " AND program_id = :prog_id"
+            filters += " AND cm.program_id = :prog_id"
             params["prog_id"] = program_id
         if semester is not None:
-            filters += " AND semester = :sem"
+            filters += " AND cm.semester = :sem"
             params["sem"] = semester
+        if search:
+            filters += " AND (c.code LIKE :search OR c.title LIKE :search OR p.name LIKE :search)"
+            params["search"] = f"%{search}%"
             
-        count_q = text(f"SELECT COUNT(*) FROM curriculum_mapping {filters}")
+        count_q = text(f"""
+            SELECT COUNT(*) FROM curriculum_mapping cm
+            JOIN program p ON cm.program_id = p.id
+            JOIN course c ON cm.course_id = c.id
+            {filters}
+        """)
         total = self.db.execute(count_q, params).scalar()
         
-        q = text(f"SELECT id, program_id, semester, course_id, type FROM curriculum_mapping {filters} ORDER BY program_id, semester LIMIT :limit OFFSET :skip")
+        q = text(f"""
+            SELECT cm.id, cm.program_id, p.name as program_name, cm.semester,
+                   cm.course_id, c.code as course_code, c.title as course_title, c.credits, cm.type
+            FROM curriculum_mapping cm
+            JOIN program p ON cm.program_id = p.id
+            JOIN course c ON cm.course_id = c.id
+            {filters}
+            ORDER BY cm.program_id, cm.semester, c.code LIMIT :limit OFFSET :skip
+        """)
         rows = self.db.execute(q, params).fetchall()
         return rows, total
         
@@ -140,25 +165,41 @@ class M2Repository:
         self.db.execute(q, {"id": id})
         self.db.commit()
 
-    def get_offerings(self, skip: int, limit: int, term_id: Optional[int] = None, course_id: Optional[int] = None) -> Tuple[List[Any], int]:
+    def get_offerings(self, skip: int, limit: int, term_id: Optional[int] = None, course_id: Optional[int] = None, faculty_id: Optional[int] = None, search: Optional[str] = None) -> Tuple[List[Any], int]:
         filters = "WHERE 1=1"
         params = {"skip": skip, "limit": limit}
         if term_id is not None:
-            filters += " AND term_id = :tid"
+            filters += " AND o.term_id = :tid"
             params["tid"] = term_id
         if course_id is not None:
-            filters += " AND course_id = :cid"
+            filters += " AND o.course_id = :cid"
             params["cid"] = course_id
+        if faculty_id is not None:
+            filters += " AND o.faculty_id = :fid"
+            params["fid"] = faculty_id
+        if search:
+            filters += " AND (c.code LIKE :search OR c.title LIKE :search OR o.section LIKE :search)"
+            params["search"] = f"%{search}%"
             
-        count_q = text(f"SELECT COUNT(*) FROM course_offering {filters}")
+        count_q = text(f"""
+            SELECT COUNT(*) FROM course_offering o
+            JOIN course c ON o.course_id = c.id
+            {filters}
+        """)
         total = self.db.execute(count_q, params).scalar()
         
         q = text(f"""
-            SELECT o.id, o.course_id, o.term_id, o.faculty_id, o.section, o.capacity,
-                   (SELECT COUNT(*) FROM enrollment e WHERE e.offering_id = o.id AND e.status = 'ENROLLED') as enrolled_count
+            SELECT o.id, o.course_id, c.code as course_code, c.title as course_title,
+                   o.term_id, t.term_label, t.term_year,
+                   o.faculty_id, CONCAT(e.first_name, ' ', e.last_name) as faculty_name,
+                   o.section, o.capacity,
+                   (SELECT COUNT(*) FROM enrollment en WHERE en.offering_id = o.id AND en.status = 'ENROLLED') as enrolled_count
             FROM course_offering o
+            JOIN course c ON o.course_id = c.id
+            JOIN academic_term t ON o.term_id = t.id
+            LEFT JOIN employee e ON o.faculty_id = e.id
             {filters}
-            ORDER BY o.id LIMIT :limit OFFSET :skip
+            ORDER BY o.id DESC LIMIT :limit OFFSET :skip
         """)
         rows = self.db.execute(q, params).fetchall()
         return rows, total
@@ -169,7 +210,17 @@ class M2Repository:
         return self.db.execute(q, {"sid": student_id, "oid": offering_id}).fetchone()
 
     def get_enrollment_by_id(self, id: int) -> Optional[Any]:
-        q = text("SELECT id, student_id, offering_id, status, enrolled_date FROM enrollment WHERE id = :id")
+        q = text("""
+            SELECT en.id, en.student_id, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.global_student_id,
+                   en.offering_id, c.code as course_code, c.title as course_title, o.section,
+                   o.term_id, t.term_label, en.status, en.enrolled_date
+            FROM enrollment en
+            JOIN student s ON en.student_id = s.id
+            JOIN course_offering o ON en.offering_id = o.id
+            JOIN course c ON o.course_id = c.id
+            JOIN academic_term t ON o.term_id = t.id
+            WHERE en.id = :id
+        """)
         return self.db.execute(q, {"id": id}).fetchone()
 
     def create_enrollment(self, data: dict) -> int:
@@ -186,20 +237,46 @@ class M2Repository:
         self.db.execute(q, {"status": status, "id": id})
         self.db.commit()
 
-    def get_enrollments(self, skip: int, limit: int, student_id: Optional[int] = None, offering_id: Optional[int] = None) -> Tuple[List[Any], int]:
+    def get_enrollments(self, skip: int, limit: int, student_id: Optional[int] = None, offering_id: Optional[int] = None, term_id: Optional[int] = None, status: Optional[str] = None, search: Optional[str] = None) -> Tuple[List[Any], int]:
         filters = "WHERE 1=1"
         params = {"skip": skip, "limit": limit}
         if student_id is not None:
-            filters += " AND student_id = :sid"
+            filters += " AND en.student_id = :sid"
             params["sid"] = student_id
         if offering_id is not None:
-            filters += " AND offering_id = :oid"
+            filters += " AND en.offering_id = :oid"
             params["oid"] = offering_id
+        if term_id is not None:
+            filters += " AND o.term_id = :tid"
+            params["tid"] = term_id
+        if status is not None:
+            filters += " AND en.status = :status"
+            params["status"] = status
+        if search:
+            filters += " AND (s.first_name LIKE :search OR s.last_name LIKE :search OR s.global_student_id LIKE :search OR c.code LIKE :search OR c.title LIKE :search)"
+            params["search"] = f"%{search}%"
             
-        count_q = text(f"SELECT COUNT(*) FROM enrollment {filters}")
+        count_q = text(f"""
+            SELECT COUNT(*) FROM enrollment en
+            JOIN student s ON en.student_id = s.id
+            JOIN course_offering o ON en.offering_id = o.id
+            JOIN course c ON o.course_id = c.id
+            {filters}
+        """)
         total = self.db.execute(count_q, params).scalar()
         
-        q = text(f"SELECT id, student_id, offering_id, status, enrolled_date FROM enrollment {filters} ORDER BY id LIMIT :limit OFFSET :skip")
+        q = text(f"""
+            SELECT en.id, en.student_id, CONCAT(s.first_name, ' ', s.last_name) as student_name, s.global_student_id,
+                   en.offering_id, c.code as course_code, c.title as course_title, o.section,
+                   o.term_id, t.term_label, en.status, en.enrolled_date
+            FROM enrollment en
+            JOIN student s ON en.student_id = s.id
+            JOIN course_offering o ON en.offering_id = o.id
+            JOIN course c ON o.course_id = c.id
+            JOIN academic_term t ON o.term_id = t.id
+            {filters}
+            ORDER BY en.id DESC LIMIT :limit OFFSET :skip
+        """)
         rows = self.db.execute(q, params).fetchall()
         return rows, total
 
@@ -221,33 +298,48 @@ class M2Repository:
         return res[0] if res else None
 
     # --- My Courses (Student) ---
-    def get_student_courses(self, student_id: int) -> List[Any]:
-        q = text("""
+    def get_student_courses(self, student_id: int, term_id: Optional[int] = None) -> List[Any]:
+        filters = "WHERE e.student_id = :sid"
+        params = {"sid": student_id}
+        if term_id is not None:
+            filters += " AND o.term_id = :tid"
+            params["tid"] = term_id
+        q = text(f"""
             SELECT e.id as enrollment_id, o.id as offering_id, c.code as course_code, c.title as course_title,
-                   o.term_id, o.faculty_id, o.section, c.credits, e.status
+                   o.term_id, o.faculty_id, CONCAT(emp.first_name, ' ', emp.last_name) as faculty_name,
+                   o.section, c.credits, e.status
             FROM enrollment e
             JOIN course_offering o ON e.offering_id = o.id
             JOIN course c ON o.course_id = c.id
-            WHERE e.student_id = :sid
+            LEFT JOIN employee emp ON o.faculty_id = emp.id
+            {filters}
+            ORDER BY c.code
         """)
-        return self.db.execute(q, {"sid": student_id}).fetchall()
+        return self.db.execute(q, params).fetchall()
 
     # --- My Teaching (Faculty) ---
-    def get_faculty_offerings(self, faculty_id: int) -> List[Any]:
-        q = text("""
+    def get_faculty_offerings(self, faculty_id: int, term_id: Optional[int] = None) -> List[Any]:
+        filters = "WHERE o.faculty_id = :fid"
+        params = {"fid": faculty_id}
+        if term_id is not None:
+            filters += " AND o.term_id = :tid"
+            params["tid"] = term_id
+        q = text(f"""
             SELECT o.id as offering_id, c.code as course_code, c.title as course_title,
-                   o.term_id, o.section, o.capacity,
+                   o.term_id, t.term_label, o.section, o.capacity,
                    (SELECT COUNT(*) FROM enrollment e WHERE e.offering_id = o.id AND e.status = 'ENROLLED') as enrolled_count
             FROM course_offering o
             JOIN course c ON o.course_id = c.id
-            WHERE o.faculty_id = :fid
+            JOIN academic_term t ON o.term_id = t.id
+            {filters}
+            ORDER BY o.id DESC
         """)
-        return self.db.execute(q, {"fid": faculty_id}).fetchall()
+        return self.db.execute(q, params).fetchall()
 
     # --- Course Roster ---
     def get_offering_roster(self, offering_id: int) -> List[Any]:
         q = text("""
-            SELECT s.id as student_id, s.global_student_id, s.first_name, s.last_name, e.status as enrollment_status, e.enrolled_date
+            SELECT s.id as student_id, s.global_student_id, s.first_name, s.last_name, s.email, e.status as enrollment_status, e.enrolled_date
             FROM enrollment e
             JOIN student s ON e.student_id = s.id
             WHERE e.offering_id = :oid

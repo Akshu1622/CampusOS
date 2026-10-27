@@ -8,8 +8,8 @@ class M2Service:
         self.repo = M2Repository(db)
 
     # --- Course ---
-    def get_courses(self, skip: int, limit: int, department_id: int = None):
-        return self.repo.get_courses(skip, limit, department_id)
+    def get_courses(self, skip: int, limit: int, department_id: int = None, search: str = None):
+        return self.repo.get_courses(skip, limit, department_id, search)
 
     def get_course(self, id: int):
         c = self.repo.get_course_by_id(id)
@@ -37,8 +37,8 @@ class M2Service:
         self.repo.delete_course(id)
 
     # --- Curriculum Mapping ---
-    def get_curriculum(self, skip: int, limit: int, program_id: int = None, semester: int = None):
-        return self.repo.get_curriculum(skip, limit, program_id, semester)
+    def get_curriculum(self, skip: int, limit: int, program_id: int = None, semester: int = None, search: str = None):
+        return self.repo.get_curriculum(skip, limit, program_id, semester, search)
 
     def get_curriculum_by_id(self, id: int):
         c = self.repo.get_curriculum_by_id(id)
@@ -66,8 +66,8 @@ class M2Service:
         self.repo.delete_curriculum(id)
 
     # --- Course Offering ---
-    def get_offerings(self, skip: int, limit: int, term_id: int = None, course_id: int = None):
-        return self.repo.get_offerings(skip, limit, term_id, course_id)
+    def get_offerings(self, skip: int, limit: int, term_id: int = None, course_id: int = None, faculty_id: int = None, search: str = None):
+        return self.repo.get_offerings(skip, limit, term_id, course_id, faculty_id, search)
 
     def get_offering(self, id: int):
         o = self.repo.get_offering_by_id(id)
@@ -98,8 +98,8 @@ class M2Service:
         return self.repo.get_offering_roster(offering_id)
 
     # --- Enrollment ---
-    def get_enrollments(self, skip: int, limit: int, student_id: int = None, offering_id: int = None):
-        return self.repo.get_enrollments(skip, limit, student_id, offering_id)
+    def get_enrollments(self, skip: int, limit: int, student_id: int = None, offering_id: int = None, term_id: int = None, status: str = None, search: str = None):
+        return self.repo.get_enrollments(skip, limit, student_id, offering_id, term_id, status, search)
 
     def get_enrollment(self, id: int):
         e = self.repo.get_enrollment_by_id(id)
@@ -168,9 +168,9 @@ class M2Service:
         return res
 
     # --- My Courses ---
-    def get_my_courses(self, student_id: int):
-        return self.repo.get_student_courses(student_id)
+    def get_my_courses(self, student_id: int, term_id: int = None):
+        return self.repo.get_student_courses(student_id, term_id)
 
     # --- My Teaching ---
-    def get_my_teaching(self, faculty_id: int):
-        return self.repo.get_faculty_offerings(faculty_id)
+    def get_my_teaching(self, faculty_id: int, term_id: int = None):
+        return self.repo.get_faculty_offerings(faculty_id, term_id)

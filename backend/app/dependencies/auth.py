@@ -54,8 +54,13 @@ def require_role(required_roles: list[str]):
 
 def require_permission(required_permissions: list[str]):
     def permission_checker(current_user: CurrentUser = Depends(get_current_user)):
+        perms_lower = [p.lower() for p in current_user.permission_sets]
+        roles_lower = [r.lower() for r in current_user.roles]
+        # Super admin role or permission automatically satisfies all permission checks
+        if "super_admin" in perms_lower or "superadmin" in roles_lower or "admin" in roles_lower:
+            return current_user
         req_lower = [p.lower() for p in required_permissions]
-        if not any(perm.lower() in req_lower for perm in current_user.permission_sets):
+        if not any(perm in req_lower for perm in perms_lower):
             raise APIError(code="FORBIDDEN", message="Insufficient permission sets", status_code=status.HTTP_403_FORBIDDEN)
         return current_user
     return permission_checker

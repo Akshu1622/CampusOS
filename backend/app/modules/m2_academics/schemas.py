@@ -21,6 +21,7 @@ class CourseResponse(BaseModel):
     title: str
     credits: int
     department_id: int
+    department_name: Optional[str] = None
     status: str
 
 class PaginatedCourses(BaseModel):
@@ -42,8 +43,12 @@ class CurriculumUpdateRequest(BaseModel):
 class CurriculumResponse(BaseModel):
     id: int
     program_id: int
+    program_name: Optional[str] = None
     semester: int
     course_id: int
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
+    credits: Optional[int] = None
     type: str
 
 class PaginatedCurriculum(BaseModel):
@@ -67,8 +72,13 @@ class OfferingUpdateRequest(BaseModel):
 class OfferingResponse(BaseModel):
     id: int
     course_id: int
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
     term_id: int
+    term_label: Optional[str] = None
+    term_year: Optional[int] = None
     faculty_id: int
+    faculty_name: Optional[str] = None
     section: str
     capacity: int
     enrolled_count: int
@@ -87,7 +97,14 @@ class EnrollmentCreateRequest(BaseModel):
 class EnrollmentResponse(BaseModel):
     id: int
     student_id: int
+    student_name: Optional[str] = None
+    global_student_id: Optional[str] = None
     offering_id: int
+    course_code: Optional[str] = None
+    course_title: Optional[str] = None
+    section: Optional[str] = None
+    term_id: Optional[int] = None
+    term_label: Optional[str] = None
     status: str
     enrolled_date: datetime
 
@@ -99,8 +116,8 @@ class PaginatedEnrollments(BaseModel):
 
 # --- Bulk Enrollment ---
 class BulkEnrollmentRequest(BaseModel):
-    policy: str = Field(..., pattern=r'^(ALL_OR_NOTHING|SKIP_INVALID)$')
-    dry_run: bool
+    policy: str = Field('SKIP_INVALID', pattern=r'^(ALL_OR_NOTHING|SKIP_INVALID)$')
+    dry_run: bool = False
     payload: List[dict] # Will contain student_id and offering_id
 
 
@@ -127,6 +144,7 @@ class MyCourseResponse(BaseModel):
     course_title: str
     term_id: int
     faculty_id: int
+    faculty_name: Optional[str] = None
     section: str
     credits: int
     status: str
@@ -136,6 +154,7 @@ class MyTeachingResponse(BaseModel):
     course_code: str
     course_title: str
     term_id: int
+    term_label: Optional[str] = None
     section: str
     capacity: int
     enrolled_count: int
@@ -145,5 +164,6 @@ class RosterStudentResponse(BaseModel):
     global_student_id: str
     first_name: str
     last_name: str
+    email: Optional[str] = None
     enrollment_status: str
     enrolled_date: datetime

@@ -30,8 +30,25 @@ def handle_db_error(e: Exception):
                     raise APIError(code=code, message=msg, status_code=http_status)
                 
                 # Fallback message parsing for standard business rules
-                if "attendance" in str(msg).lower() and "75%" in str(msg):
+                msg_str = str(msg).lower()
+                if "attendance" in msg_str and "75%" in msg_str:
                     raise APIError(code="ATTENDANCE_BELOW_THRESHOLD", message=str(msg), status_code=status.HTTP_403_FORBIDDEN)
+                if "registration window" in msg_str and "closed" in msg_str:
+                    raise APIError(code="EXAM_REGISTRATION_CLOSED", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+                if "already registered" in msg_str:
+                    raise APIError(code="EXAM_DUPLICATE_REGISTRATION", message=str(msg), status_code=status.HTTP_409_CONFLICT)
+                if "not actively enrolled" in msg_str:
+                    raise APIError(code="EXAM_STUDENT_NOT_ENROLLED", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+                if "already published" in msg_str:
+                    raise APIError(code="RESULT_ALREADY_PUBLISHED", message=str(msg), status_code=status.HTTP_409_CONFLICT)
+                if "capacity" in msg_str and "full" in msg_str:
+                    raise APIError(code="ENROLLMENT_CAPACITY_FULL", message=str(msg), status_code=status.HTTP_409_CONFLICT)
+                if "term is not open" in msg_str:
+                    raise APIError(code="TERM_NOT_OPEN", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+                if "not in the required program curriculum" in msg_str:
+                    raise APIError(code="STUDENT_NOT_IN_CURRICULUM", message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+                if "already enrolled" in msg_str:
+                    raise APIError(code="DUPLICATE_ENROLLMENT", message=str(msg), status_code=status.HTTP_409_CONFLICT)
 
                 # Generic Integrity Constraint Violation (e.g. 1062 Duplicate entry)
                 if errno in (1062, 1451, 1452):
