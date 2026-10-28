@@ -5,7 +5,7 @@ import {
   Search, Bell, Menu, LayoutDashboard, Users, BookOpen, GraduationCap,
   Calendar, FileText, CreditCard, CheckSquare, ChevronDown, LogOut,
   Award, TrendingUp, Building2, BarChart3, ShieldCheck, Briefcase,
-  ClipboardList, Home, PenSquare, X
+  ClipboardList, Home, PenSquare, X, ListOrdered, Shield
 } from 'lucide-react'
 import { Avatar, Dropdown } from '@/components/ui'
 
@@ -55,7 +55,17 @@ const adminNav: NavItem[] = [
   { label: 'Occupancy', icon: <Home size={18} />, href: '/admin/hostel/occupancy-dashboard' },
   { label: 'Rooms', icon: <Building2 size={18} />, href: '/admin/hostel/management' },
   { label: 'Allocations', icon: <Users size={18} />, href: '/admin/hostel/room-allocation' },
+  { label: 'Hostel Fees', icon: <CreditCard size={18} />, href: '/admin/hostel/fees' },
   { label: 'Requests', icon: <ClipboardList size={18} />, href: '/admin/hostel/requests' },
+  { label: 'Integrity Guardian', icon: <ShieldCheck size={18} />, href: '/admin/hostel/guardian' },
+  { label: 'Smart Allocation Lab', icon: <Award size={18} />, href: '/admin/hostel/smart-allocation' },
+  { label: 'Capacity Simulator', icon: <BarChart3 size={18} />, href: '/admin/hostel/simulator' },
+  { label: 'Change Impact Radar', icon: <TrendingUp size={18} />, href: '/admin/hostel/radar' },
+  { label: 'Student Journey', icon: <Users size={18} />, href: '/admin/hostel/journey' },
+  { label: 'Complaints Desk', icon: <ClipboardList size={18} />, href: '/admin/hostel/complaints' },
+  { label: 'Visual Floor Map', icon: <Home size={18} />, href: '/admin/hostel/map' },
+  { label: 'Waitlist Queue', icon: <ListOrdered size={18} />, href: '/admin/hostel/waitlist' },
+  { label: 'Visitor Desk', icon: <Shield size={18} />, href: '/admin/hostel/visitors' },
   { type: 'group', label: 'ADMINISTRATION' },
   { label: 'Users & Access', icon: <Users size={18} />, href: '/admin/users' },
   { label: 'Roles', icon: <ShieldCheck size={18} />, href: '/admin/roles' },

@@ -1,17 +1,10 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, Button, Input, Select, Alert } from '@/components/ui'
-import { useCreateMyRequest, useMyHostel, useHostels } from '../hooks'
+import { useCreateMyRequest, useMyHostel, useHostels, useRooms, useMyRequests } from '../hooks'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import type { RequestType } from '../api'
 import { Home, ArrowLeft, Send, CheckCircle2, AlertCircle } from 'lucide-react'
-
-const requestSchema = z.object({
-  request_type: z.enum(['ALLOCATION', 'ROOM_CHANGE', 'VACATE']),
-  details: z.string().optional()
-})
+import { toast } from 'react-hot-toast'
 
 export function S05NewHostelRequestPage() {
   const [searchParams] = useSearchParams()
@@ -19,37 +12,54 @@ export function S05NewHostelRequestPage() {
   
   const { data: allocation, isLoading: allocLoading } = useMyHostel()
   const { data: hostels = [] } = useHostels()
+  const { data: pendingRequests = [] } = useMyRequests('PENDING')
+
+  const [preferredHostelId, setPreferredHostelId] = useState<number | undefined>()
+  const { data: rooms = [] } = useRooms(preferredHostelId)
+  const [preferredRoomId, setPreferredRoomId] = useState<number | undefined>()
+
+  const [requestType, setRequestType] = useState<RequestType>(defaultType)
+  const [details, setDetails] = useState('')
+
   const createRequest = useCreateMyRequest()
   const navigate = useNavigate()
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
-    resolver: zodResolver(requestSchema),
-    defaultValues: { request_type: defaultType, details: '' }
-  })
-
-  const selectedType = watch('request_type')
+  const hasAllocation = allocation && allocation.status !== 'VACATED'
+  const hasPendingRequest = pendingRequests.length > 0
 
   useEffect(() => {
     if (!allocLoading) {
-      if (allocation && allocation.status !== 'VACATED' && selectedType === 'ALLOCATION') {
-        setValue('request_type', 'ROOM_CHANGE')
-      } else if ((!allocation || allocation.status === 'VACATED') && selectedType !== 'ALLOCATION') {
-        setValue('request_type', 'ALLOCATION')
+      if (hasAllocation && requestType === 'ALLOCATION') {
+        setRequestType('ROOM_CHANGE')
+      } else if (!hasAllocation && requestType !== 'ALLOCATION') {
+        setRequestType('ALLOCATION')
       }
     }
-  }, [allocation, allocLoading, selectedType, setValue])
+  }, [hasAllocation, allocLoading])
 
-  const onSubmit = (data: any) => {
-    createRequest.mutate(data, {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (hasPendingRequest) {
+      toast.error('You already have a pending hostel request awaiting warden review.')
+      return
+    }
+
+    createRequest.mutate({
+      request_type: requestType,
+      preferred_hostel_id: preferredHostelId || undefined,
+      preferred_room_id: preferredRoomId || undefined,
+      details: details.trim() || undefined
+    }, {
       onSuccess: () => {
         navigate('/student/hostel/requests')
       }
     })
   }
 
-  if (allocLoading) return <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading allocation status...</div>
-
-  const hasAllocation = allocation && allocation.status !== 'VACATED'
+  if (allocLoading) {
+    return <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading accommodation status...</div>
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', margin: '0 auto' }}>
@@ -60,7 +70,7 @@ export function S05NewHostelRequestPage() {
               HOS-05
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              Submit Hostel Request
+              New Hostel Request & Application
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
@@ -68,42 +78,48 @@ export function S05NewHostelRequestPage() {
           </p>
         </div>
         <Button variant="subtle" size="sm" leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/student/hostel')}>
-          Back
+          Back to Portal
         </Button>
       </div>
 
+      {hasPendingRequest && (
+        <Alert variant="warning" title="Pending Application Detected">
+          You currently have a pending request awaiting administrative sanction. University policy restricts multiple active applications concurrently.
+        </Alert>
+      )}
+
       {hasAllocation && (
         <Alert variant="info" title="Existing Hall Allocation Active">
-          You currently hold an active room allotment. You may submit a request for a Room Transfer or to Vacate your current room.
+          You are currently allotted to <strong>{allocation.hostel_name} - Room {allocation.room_number}</strong>. You may submit a request for a Room Transfer or to Vacate your current room.
         </Alert>
       )}
 
       <Card padding={24}>
-        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--color-text-primary)' }}>
               Select Request Nature
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
               {[
-                { type: 'ALLOCATION' as const, label: 'New Allocation', desc: 'Fresh room allotment', disabled: hasAllocation },
-                { type: 'ROOM_CHANGE' as const, label: 'Room Transfer', desc: 'Transfer wing or floor', disabled: !hasAllocation },
-                { type: 'VACATE' as const, label: 'Vacate Hostel', desc: 'Relinquish room key', disabled: !hasAllocation },
+                { type: 'ALLOCATION' as const, label: 'New Allocation', desc: 'Fresh room allotment', disabled: !!hasAllocation },
+                { type: 'ROOM_CHANGE' as const, label: 'Room Transfer', desc: 'Transfer hall or wing', disabled: !hasAllocation },
+                { type: 'VACATE' as const, label: 'Vacate Hostel', desc: 'Relinquish room tenancy', disabled: !hasAllocation },
               ].map(item => (
                 <div
                   key={item.type}
-                  onClick={() => !item.disabled && setValue('request_type', item.type)}
+                  onClick={() => !item.disabled && setRequestType(item.type)}
                   style={{
-                    border: `1.5px solid ${selectedType === item.type ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    border: `1.5px solid ${requestType === item.type ? 'var(--color-primary, #0D9488)' : 'var(--color-border)'}`,
                     borderRadius: '8px',
                     padding: '14px',
                     cursor: item.disabled ? 'not-allowed' : 'pointer',
-                    opacity: item.disabled ? 0.5 : 1,
-                    background: selectedType === item.type ? 'var(--color-primary-subtle)' : 'var(--color-surface)',
+                    opacity: item.disabled ? 0.45 : 1,
+                    background: requestType === item.type ? 'var(--color-primary-subtle, #F0FDFA)' : 'var(--color-surface)',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: selectedType === item.type ? 'var(--color-primary)' : 'var(--color-text-primary)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: requestType === item.type ? 'var(--color-primary, #0D9488)' : 'var(--color-text-primary)' }}>
                     {item.label}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
@@ -114,22 +130,40 @@ export function S05NewHostelRequestPage() {
             </div>
           </div>
 
-          {(selectedType === 'ALLOCATION' || selectedType === 'ROOM_CHANGE') && (
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
-                Preferred Residence Hall (Optional)
-              </label>
-              <Select
-                options={[
-                  { label: 'No Specific Preference', value: '' },
-                  ...hostels.map(h => ({ label: `${h.name} (${h.gender_block} Block)`, value: h.name }))
-                ]}
-                onChange={(e) => {
-                  const currentVal = watch('details') || ''
-                  const pref = e.target.value ? `Preference: ${e.target.value}\n` : ''
-                  setValue('details', pref + currentVal.replace(/^Preference: .*\n/, ''))
-                }}
-              />
+          {(requestType === 'ALLOCATION' || requestType === 'ROOM_CHANGE') && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                  Preferred Residence Hall (Optional)
+                </label>
+                <Select
+                  value={preferredHostelId?.toString() || ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? parseInt(e.target.value) : undefined
+                    setPreferredHostelId(id)
+                    setPreferredRoomId(undefined)
+                  }}
+                  options={[
+                    { label: 'No Specific Preference', value: '' },
+                    ...hostels.map(h => ({ label: `${h.name} (${h.gender_block} Block)`, value: h.id.toString() }))
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                  Preferred Room (Optional)
+                </label>
+                <Select
+                  value={preferredRoomId?.toString() || ''}
+                  onChange={(e) => setPreferredRoomId(e.target.value ? parseInt(e.target.value) : undefined)}
+                  disabled={!preferredHostelId}
+                  options={[
+                    { label: 'Any Vacant Room', value: '' },
+                    ...rooms.map(r => ({ label: `Room ${r.room_number} (${r.available_beds} beds free)`, value: r.id.toString() }))
+                  ]}
+                />
+              </div>
             </div>
           )}
 
@@ -138,9 +172,10 @@ export function S05NewHostelRequestPage() {
               Justification & Medical / Academic Notes
             </label>
             <textarea
-              {...register('details')}
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
               rows={4}
-              placeholder={selectedType === 'VACATE' ? "State reason for vacating (e.g. Day Scholar conversion, graduation)..." : "Specific requirements (e.g. ground floor request due to medical injury)..."}
+              placeholder={requestType === 'VACATE' ? "State reason for vacating (e.g. Day Scholar conversion, graduation)..." : "State preferences or justification (e.g. ground floor request due to medical injury, quiet study floor)..."}
               style={{
                 width: '100%',
                 borderRadius: '6px',
@@ -156,9 +191,15 @@ export function S05NewHostelRequestPage() {
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
             <Button variant="secondary" onClick={() => navigate(-1)}>Cancel</Button>
-            <Button type="submit" variant="primary" leftIcon={<Send size={14} />} isLoading={createRequest.isPending}>
+            <Button
+              type="submit"
+              variant="primary"
+              leftIcon={<Send size={14} />}
+              isLoading={createRequest.isPending}
+              disabled={hasPendingRequest}
+            >
               Submit Request
             </Button>
           </div>

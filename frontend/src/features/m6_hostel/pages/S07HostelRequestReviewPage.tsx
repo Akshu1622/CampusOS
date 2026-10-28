@@ -1,21 +1,14 @@
 import React, { useState } from 'react'
 import { Card, StatCard, Table, type Column, StatusPill, Button, Drawer, Input } from '@/components/ui'
 import { useAllRequests, useDecideRequest } from '../hooks'
-import { getStudents } from '../api'
-import { useQuery } from '@tanstack/react-query'
 import type { HostelRequest, RequestStatus } from '../api'
 import { useNavigate } from 'react-router-dom'
-import { Home, Clock, CheckCircle, X, Check, ShieldAlert, User, FileText } from 'lucide-react'
+import { Home, Clock, CheckCircle, X, Check, ShieldAlert, User, FileText, Sparkles, AlertCircle } from 'lucide-react'
 
 export function S07HostelRequestReviewPage() {
   const [activeTab, setActiveTab] = useState<RequestStatus>('PENDING')
   const { data: requests = [], isLoading: reqLoading } = useAllRequests(activeTab)
   
-  const { data: students = [], isLoading: stuLoading } = useQuery({
-    queryKey: ['students_all'],
-    queryFn: getStudents
-  })
-
   const decideRequest = useDecideRequest()
   const navigate = useNavigate()
 
@@ -29,12 +22,14 @@ export function S07HostelRequestReviewPage() {
       {
         onSuccess: () => {
           const reqType = selectedReq.request_type
+          const studentId = selectedReq.student_id
+          const preferredRoomId = selectedReq.preferred_room_id
           setSelectedReq(null)
           setRemark('')
           
           if (status === 'APPROVED' && reqType !== 'VACATE') {
-            if (window.confirm('Request approved. Do you want to proceed to allocate a room now?')) {
-              navigate('/admin/hostel/room-allocation')
+            if (window.confirm('Request approved! Do you want to proceed to the Allocation Console now to assign a room and bed?')) {
+              navigate(`/admin/hostel/room-allocation?student_id=${studentId}&room_id=${preferredRoomId || ''}`)
             }
           }
         }
@@ -44,51 +39,80 @@ export function S07HostelRequestReviewPage() {
 
   const columns: Column<HostelRequest>[] = [
     { 
-      header: 'Student', 
+      header: 'Applicant Student',
       key: 'student_id', 
-      render: (r) => {
-        const student = students.find((s: any) => s.id === r.student_id)
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: 'var(--color-chip-people-bg)',
-              color: 'var(--color-chip-people-text)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: '11px'
-            }}>
-              {(student?.name || 'S').charAt(0)}
+      render: (r) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: 'var(--color-chip-people-bg, #E0F5F3)',
+            color: 'var(--color-chip-people-text, #0D9488)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontSize: '12px'
+          }}>
+            {(r.student_name || 'S').charAt(0)}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {r.student_name || `Student #${r.student_id}`}
             </div>
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{student?.name || `Student #${r.student_id}`}</div>
-              <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{student?.university_id}</div>
+            <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>
+              {r.global_student_id || `ID: ${r.student_id}`} {r.program_code ? `• ${r.program_code}` : ''}
             </div>
           </div>
-        )
-      } 
+        </div>
+      )
+    },
+    {
+      header: 'Demographics',
+      key: 'student_gender',
+      render: (r) => (
+        <span style={{
+          fontSize: '11px',
+          fontWeight: 700,
+          padding: '2px 8px',
+          borderRadius: '4px',
+          background: r.student_gender ? 'var(--color-surface-subtle)' : '#FEF3C7',
+          color: r.student_gender ? 'var(--color-text-secondary)' : '#92400E',
+          border: '1px solid var(--color-border)'
+        }}>
+          {r.student_gender || 'UNVERIFIED'}
+        </span>
+      )
     },
     {
       header: 'Request Nature',
       key: 'request_type',
       render: (r) => (
-        <span style={{ fontWeight: 600 }}>{r.request_type.replace('_', ' ')}</span>
+        <div>
+          <span style={{ fontWeight: 600 }}>{r.request_type.replace('_', ' ')}</span>
+          {r.preferred_hostel_name && (
+            <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+              Pref: {r.preferred_hostel_name} {r.preferred_room_number ? `(${r.preferred_room_number})` : ''}
+            </div>
+          )}
+        </div>
       )
     },
     {
       header: 'Submission Date',
       key: 'created_at',
-      render: (r) => <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span>
+      render: (r) => (
+        <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+          {r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}
+        </span>
+      )
     },
     {
       header: 'Applicant Remarks',
       key: 'details',
       render: (r) => (
-        <div style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+        <div style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--color-text-muted)' }}>
           {r.details || '—'}
         </div>
       )
@@ -107,7 +131,7 @@ export function S07HostelRequestReviewPage() {
       header: 'Actions',
       key: 'id',
       render: (r) => (
-        <Button variant="subtle" size="sm" onClick={() => { setSelectedReq(r); setRemark(r.reviewer_notes || r.remark || '') }}>
+        <Button variant="subtle" size="sm" onClick={() => { setSelectedReq(r); setRemark(r.remark || '') }}>
           Review
         </Button>
       )
@@ -123,7 +147,7 @@ export function S07HostelRequestReviewPage() {
             HOS-07
           </span>
           <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-            Hostel Application Review Desk
+            Hostel Request Review Desk
           </h1>
         </div>
         <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
@@ -134,14 +158,14 @@ export function S07HostelRequestReviewPage() {
       {/* StatCards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
-          label="Pending Sanction"
+          label="Pending Queue"
           value={activeTab === 'PENDING' ? requests.length : '—'}
           tone="accent"
           icon={<Clock size={18} />}
-          description="In warden queue"
+          description="Awaiting administrative action"
         />
         <StatCard
-          label="Current Review Filter"
+          label="Current Filter"
           value={activeTab}
           tone="neutral"
           icon={<Home size={18} />}
@@ -149,10 +173,10 @@ export function S07HostelRequestReviewPage() {
         />
         <StatCard
           label="SLA Compliance"
-          value="< 48 Hrs"
+          value="< 24 Hrs"
           tone="positive"
           icon={<CheckCircle size={18} />}
-          description="Average decision turnaround"
+          description="Average turnaround time"
         />
       </div>
 
@@ -175,11 +199,11 @@ export function S07HostelRequestReviewPage() {
                 fontSize: '14px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
+                color: activeTab === tab ? 'var(--color-primary, #0D9488)' : 'var(--color-text-secondary)',
+                borderBottom: activeTab === tab ? '2px solid var(--color-primary, #0D9488)' : '2px solid transparent',
               }}
             >
-              {tab}
+              {tab} Applications {activeTab === tab && `(${requests.length})`}
             </button>
           ))}
         </div>
@@ -188,7 +212,7 @@ export function S07HostelRequestReviewPage() {
           data={requests}
           columns={columns}
           keyExtractor={(r) => r.id.toString()}
-          isLoading={reqLoading || stuLoading}
+          isLoading={reqLoading}
           emptyMessage="No requests found in this review queue."
         />
       </Card>
@@ -204,11 +228,11 @@ export function S07HostelRequestReviewPage() {
             <Button variant="secondary" onClick={() => setSelectedReq(null)}>Close</Button>
             {selectedReq?.status === 'PENDING' && (
               <>
-                <Button variant="danger" onClick={() => handleDecision('REJECTED')}>
+                <Button variant="danger" isLoading={decideRequest.isPending} onClick={() => handleDecision('REJECTED')}>
                   Reject Request
                 </Button>
-                <Button variant="primary" onClick={() => handleDecision('APPROVED')}>
-                  Approve & Allot
+                <Button variant="primary" isLoading={decideRequest.isPending} onClick={() => handleDecision('APPROVED')}>
+                  {selectedReq.request_type === 'VACATE' ? 'Approve & Vacate Bed' : 'Approve & Allot'}
                 </Button>
               </>
             )}
@@ -235,9 +259,33 @@ export function S07HostelRequestReviewPage() {
               <StatusPill label={selectedReq.status} status={selectedReq.status === 'APPROVED' ? 'success' : selectedReq.status === 'PENDING' ? 'warning' : 'error'} />
             </div>
 
+            {/* Student Info Box */}
+            <div style={{
+              padding: '14px',
+              borderRadius: '8px',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)'
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px' }}>APPLICANT INFORMATION</div>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-text-primary)' }}>
+                {selectedReq.student_name}
+              </div>
+              <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                Official ID: <strong>{selectedReq.global_student_id}</strong> • Program: {selectedReq.program_code || 'Undergraduate'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                Gender Demographics: <strong>{selectedReq.student_gender || 'UNVERIFIED (COED BLOCK ONLY)'}</strong>
+              </div>
+              {selectedReq.preferred_hostel_name && (
+                <div style={{ fontSize: '12px', color: 'var(--color-primary, #0D9488)', marginTop: '6px', fontWeight: 600 }}>
+                  Preference: {selectedReq.preferred_hostel_name} {selectedReq.preferred_room_number ? `(Room ${selectedReq.preferred_room_number})` : ''}
+                </div>
+              )}
+            </div>
+
             <div>
               <h4 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                APPLICANT NOTES
+                APPLICANT JUSTIFICATION / NOTES
               </h4>
               <div style={{
                 padding: '12px',
@@ -253,13 +301,13 @@ export function S07HostelRequestReviewPage() {
 
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--color-text-primary)' }}>
-                Warden Office Endorsement Notes
+                Warden Office Endorsement Notes / Reason
               </label>
               <textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 rows={3}
-                placeholder="Optional notes or condition of allotment..."
+                placeholder="Remarks for sanction or rejection explanation..."
                 style={{
                   width: '100%',
                   borderRadius: '6px',

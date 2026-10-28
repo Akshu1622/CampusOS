@@ -42,7 +42,7 @@ test.describe('M6 Hostel Smoke Tests', () => {
     await login(page, 'Admin');
     await page.goto('/admin/hostel/room-allocation');
     await expect(page.locator('h1')).toContainText('Room Allocation');
-    await expect(page.locator('button:has-text("Allocate Room")')).toBeVisible();
+    await expect(page.locator('button:has-text("Confirm Allocation")')).toBeVisible();
   });
 
   test('S-03 Hostel Occupancy Dashboard (Admin)', async ({ page }) => {
@@ -76,6 +76,31 @@ test.describe('M6 Hostel Smoke Tests', () => {
     await page.goto('/admin/hostel/requests');
     await expect(page.locator('h1')).toContainText('Hostel Request Review');
     await expect(page.locator('table')).toBeVisible();
+  });
+
+
+  test('S-08 Hostel Integrity Guardian (Admin)', async ({ page }) => {
+    await login(page, 'Admin');
+    await page.goto('/admin/hostel/guardian');
+    await expect(page.locator('h1')).toContainText('Hostel Data Integrity Guardian');
+  });
+
+  test('S-09 Smart Allocation Lab (Admin)', async ({ page }) => {
+    await login(page, 'Admin');
+    await page.goto('/admin/hostel/smart-allocation');
+    await expect(page.locator('h1')).toContainText('Smart Allocation Lab');
+  });
+
+  test('S-10 Capacity Simulator (Admin)', async ({ page }) => {
+    await login(page, 'Admin');
+    await page.goto('/admin/hostel/simulator');
+    await expect(page.locator('h1')).toContainText('Capacity What-If');
+  });
+
+  test('S-11 Change Impact Radar (Admin)', async ({ page }) => {
+    await login(page, 'Admin');
+    await page.goto('/admin/hostel/radar');
+    await expect(page.locator('h1')).toContainText('Hostel Change Impact Radar');
   });
 
   test('Unauthorized access check for Admin page by Student', async ({ page }) => {

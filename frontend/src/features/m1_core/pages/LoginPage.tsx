@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
-import { GraduationCap, BookOpen, Users, BarChart3, Shield, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { GraduationCap, BookOpen, Users, BarChart3, Shield, Eye, EyeOff, CheckCircle2, Home } from 'lucide-react'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -24,7 +24,16 @@ const DEMO_ROLES: DemoRole[] = [
     color: '#2563EB',
     bg: '#EFF6FF',
     icon: <Shield size={16} />,
-    desc: 'Full system access'
+    desc: 'Core Platform'
+  },
+  {
+    role: 'Hostel Admin',
+    username: 'admin_hostel',
+    password: 'password123',
+    color: '#0D9488',
+    bg: '#E0F5F3',
+    icon: <Home size={16} />,
+    desc: 'Hostel & Housing'
   },
   {
     role: 'Faculty',

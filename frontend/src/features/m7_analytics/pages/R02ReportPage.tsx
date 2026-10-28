@@ -237,7 +237,7 @@ export function R02ReportPage() {
         </div>
         <div style={{ padding: '16px 20px' }}>
           <Filters 
-            filters={config.filters} 
+            filters={config.filters as any}
             values={filters} 
             onChange={(newVals) => { setFilters(newVals); setPage(1); }} 
           />
@@ -287,7 +287,7 @@ export function R02ReportPage() {
             {config.chart.type === 'bar' ? (
               <GroupedBarChart 
                 data={processedData} 
-                bars={config.chart.dataKeys || []} 
+                bars={(config.chart.dataKeys || []) as any}
                 xAxisKey={config.chart.xAxisKey} 
                 layout={config.chart.layout || 'horizontal'} 
               />

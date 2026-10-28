@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Card, StatCard, Select, StatusPill, Button, EmptyState } from '@/components/ui'
 import { useMyRequests } from '../hooks'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { RequestStatus } from '../api'
-import { Plus, Home, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Plus, Home, Clock, CheckCircle, ArrowLeft, MessageSquare } from 'lucide-react'
 
 export function S06MyHostelRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<RequestStatus | ''>('')
@@ -23,16 +23,21 @@ export function S06MyHostelRequestsPage() {
               HOS-06
             </span>
             <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-              My Accommodation Requests
+              My Hostel Requests
             </h1>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
             Track the status of your room allocation, transfer, and vacation applications.
           </p>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => navigate('/student/hostel/new-request')}>
-          New Request
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="subtle" size="sm" leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/student/hostel')}>
+            Back to Portal
+          </Button>
+          <Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => navigate('/student/hostel/new-request')}>
+            New Request
+          </Button>
+        </div>
       </div>
 
       {/* StatCards */}
@@ -61,7 +66,7 @@ export function S06MyHostelRequestsPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <Card padding={16}>
+      <Card padding={14}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div style={{ width: '220px' }}>
             <Select
@@ -81,7 +86,7 @@ export function S06MyHostelRequestsPage() {
       {/* Requests List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {isLoading ? (
-          <div>Loading your requests...</div>
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading your requests...</div>
         ) : requests.length === 0 ? (
           <Card padding={32}>
             <EmptyState
@@ -95,7 +100,7 @@ export function S06MyHostelRequestsPage() {
           requests.map(req => (
             <Card key={req.id} padding={20}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                       {req.request_type.replace('_', ' ')}
@@ -105,8 +110,11 @@ export function S06MyHostelRequestsPage() {
                       status={req.status === 'APPROVED' ? 'success' : req.status === 'PENDING' ? 'warning' : 'error'}
                     />
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                     Application #{req.id} • Submitted {req.created_at ? 'on ' + new Date(req.created_at).toLocaleDateString() : 'recently'}
+                    {req.preferred_hostel_name && (
+                      <span> • Preferred: <strong>{req.preferred_hostel_name}</strong> {req.preferred_room_number ? `(Room ${req.preferred_room_number})` : ''}</span>
+                    )}
                   </div>
                   {req.details && (
                     <div style={{
@@ -120,6 +128,23 @@ export function S06MyHostelRequestsPage() {
                       whiteSpace: 'pre-wrap'
                     }}>
                       {req.details}
+                    </div>
+                  )}
+                  {req.remark && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      background: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      fontSize: '12px',
+                      color: '#166534',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <MessageSquare size={14} />
+                      <span><strong>Warden Remark:</strong> {req.remark}</span>
                     </div>
                   )}
                 </div>
